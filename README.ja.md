@@ -19,8 +19,11 @@ task-clock は全発火を「予定 vs 実績」で記録します。本アプ�
   トリガー（`*/30 * * * *` or `success + 30m`）、next run（具体時刻 /
   「after current run」/「on success + N」）、last run（ok / exit N /
   missed+理由）
-- **その場のアクション**: 即時実行、pause / resume、tasks.d の reload、
-  最終 run ログの Finder 表示 — 失敗は操作したその画面に表示
+- **その場のアクション**: 即時実行、タスクごとのオン/オフスイッチ
+  （pause/resume — デーモンが永続化するので再起動を跨いで持続）、タスク定義の
+  reload、最終 run ログの Finder 表示 — 失敗は操作したその画面に表示。
+  config で `enabled = false` のタスクにはスイッチを出さない（その層は
+  tasks.d の領分で、何も起きないコントロールは嘘になるため）
 - **ターミナル不要のデーモン管理**: 常設のパイロットランプ行 — 緑（稼働）/
   橙（登録済みなのに無応答、Restart ボタン付き）/ 灰（停止）— と、同梱 CLI
   経由で launch agent を登録/削除する電源スイッチ

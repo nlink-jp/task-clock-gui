@@ -19,7 +19,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 - Launch-at-login toggle (SMAppService; ambiguous statuses never disable
   the control, mismatches are reported honestly)
 - Local notifications for overrun entry, run failure, and daemon-down
-  (edge-triggered), with TCC authorization requested at launch
+  (edge-triggered — and silent for a deliberate stop, i.e. when the
+  registration was removed with the daemon), with TCC authorization
+  requested at launch
+- Per-task on/off switch (pause/resume, persisted by the daemon across
+  restarts); config-disabled tasks show no switch — that layer belongs to
+  tasks.d
+- Generated app icon (scripts/gen-icon.swift), pilot-lamp daemon row, and
+  a single unambiguous "Reload task definitions" control
 - Project scaffold: SPM package (Core + app + tests), signed .app pipeline
   (codesign / notarize / cask generation), two-layer single-instance guard,
   RFP (ja/en), README (en/ja)

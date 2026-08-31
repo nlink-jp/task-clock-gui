@@ -215,15 +215,7 @@ struct TaskRow: View {
                 Image(systemName: "play.fill")
             }
             .buttonStyle(.borderless)
-            .help("Run now")
-
-            Button {
-                task.paused ? model.resume(task: task.name) : model.pause(task: task.name)
-            } label: {
-                Image(systemName: task.paused ? "play.circle" : "pause.circle")
-            }
-            .buttonStyle(.borderless)
-            .help(task.paused ? "Resume scheduling" : "Pause scheduling")
+            .help("Run now (works even while off)")
         }
         if let log = task.lastRun?.logPath, !log.isEmpty {
             Button {
@@ -233,6 +225,25 @@ struct TaskRow: View {
             }
             .buttonStyle(.borderless)
             .help("Reveal the last run's log in Finder")
+        }
+        if task.enabled {
+            // The per-task on/off switch = pause/resume, which the daemon
+            // persists across restarts. The config's `enabled = false` is a
+            // different layer: declared in tasks.d, and honestly not
+            // controllable from here — no switch is shown for it rather
+            // than one that would do nothing.
+            Toggle("", isOn: Binding(
+                get: { !task.paused },
+                set: { on in
+                    on ? model.resume(task: task.name) : model.pause(task: task.name)
+                }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .labelsHidden()
+            .help(task.paused
+                ? "Off — scheduling paused (persists until turned on)"
+                : "On — scheduled; turn off to pause")
         }
     }
 }
