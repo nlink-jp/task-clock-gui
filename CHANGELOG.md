@@ -3,6 +3,14 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Run-history view (Phase 2): click a task row for its scheduled-vs-actual
+  record — one line per fire with start delay, duration, result and a
+  reveal-log button; live-updating while the popover is open
+
 ## [0.1.1] - 2026-08-31
 
 ### Fixed

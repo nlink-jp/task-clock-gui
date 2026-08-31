@@ -40,6 +40,7 @@ Sources/task-clock-gui/      # UI 層（薄く保つ）
   LoginItem.swift            #   SMAppService（曖昧 status は「未登録」に畳む）
   Notifier.swift             #   UNUserNotificationCenter（起動時に許可要求・拒否は stderr）
   PopoverView.swift          #   タスク行 + アクション + デーモン/ログイントグル + エラー表示
+  HistoryView.swift          #   run 履歴ビュー（行タップで遷移、戻るで復帰; 表示写像は Core の HistoryRow.swift）
 Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト / ガード / 解決順
 ```
 
