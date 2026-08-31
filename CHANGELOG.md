@@ -3,6 +3,20 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A long state line squeezed the row's action buttons out of view — the
+  text now truncates inside the leftover width and the controls keep
+  layout priority
+
+### Changed
+
+- The run-now button is behind a two-click interlock: the first click
+  arms it (orange confirm state), the second within 3 seconds fires, and
+  a stray click decays harmlessly
+
 ## [0.2.1] - 2026-08-31
 
 ### Changed

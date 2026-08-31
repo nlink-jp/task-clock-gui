@@ -200,6 +200,12 @@ struct TaskRow: View {
     @ObservedObject var model: AppModel
     let now: Date
 
+    /// Run-now interlock: the first click arms (orange confirm state), the
+    /// second click within the window fires; the arm decays on its own.
+    /// A single stray click can no longer launch a task (user feedback).
+    @State private var runArmed = false
+    @State private var disarmTask: Task<Void, Never>?
+
     var body: some View {
         let text = taskRowText(task, now: now)
         HStack(alignment: .center, spacing: 8) {
@@ -218,14 +224,20 @@ struct TaskRow: View {
                     .font(.caption)
                     .foregroundStyle(stateColor)
                     .lineLimit(1)
+                    .truncationMode(.tail)
             }
+            // Claim the leftover width and truncate inside it — combined
+            // with the controls' layoutPriority this is what keeps a long
+            // state line from squeezing the buttons out of the row.
+            .frame(maxWidth: .infinity, alignment: .leading)
             // The row body opens the run history (Phase 2); the chevron is
             // the affordance.
             .contentShape(Rectangle())
             .onTapGesture { model.openHistory(task: task.name) }
             .help("Show run history")
-            Spacer(minLength: 4)
             controls
+                .fixedSize()
+                .layoutPriority(1)
         }
         .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
         .frame(height: PopoverLayout.rowHeight)
@@ -243,12 +255,26 @@ struct TaskRow: View {
         // reporting the daemon's answer beats guessing what is possible.
         if task.enabled {
             Button {
-                model.trigger(task: task.name)
+                if runArmed {
+                    disarmTask?.cancel()
+                    runArmed = false
+                    model.trigger(task: task.name)
+                } else {
+                    runArmed = true
+                    disarmTask?.cancel()
+                    disarmTask = Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(3))
+                        if !Task.isCancelled { runArmed = false }
+                    }
+                }
             } label: {
-                Image(systemName: "play.fill")
+                Image(systemName: runArmed ? "play.circle.fill" : "play.fill")
+                    .foregroundStyle(runArmed ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary))
             }
             .buttonStyle(.borderless)
-            .help("Run now (works even while off)")
+            .help(runArmed
+                ? "Click again to run now"
+                : "Run now — click twice (interlock; works even while off)")
         }
         if let log = task.lastRun?.logPath, !log.isEmpty {
             Button {

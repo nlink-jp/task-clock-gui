@@ -51,6 +51,11 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   プロンプトの有無を必ず確認。TCC 要求は AppStart.once（起動時）にある。
 - daemonInstalled（plist 存在）と daemonUp（API 応答）は別状態。plist パスは
   Core の `daemonPlistPath`（CLI の label `jp.nlink.task-clock` が契約）。
+- タスク行の HStack: テキスト側は `frame(maxWidth:.infinity)` + truncate、
+  コントロール側は `fixedSize()+layoutPriority(1)` — 長い状態文でボタンが
+  押し出される回帰を防ぐ組。片方だけでは効かない。
+- 即時実行ボタンは 2 クリックインターロック（TaskRow の runArmed、3s で
+  自動解除）— 単発クリックでタスクを起動させない（ユーザー要件）。
 - **daemon-down 通知は「登録が残ったまま落ちた」ときだけ**（KeepAlive 失敗 =
   異常）。登録ごと消えた停止（GUI スイッチ OFF / `task-clock uninstall`）は
   意図的停止なので通知しない — 意図は intent フラグでなく観測可能な状態
