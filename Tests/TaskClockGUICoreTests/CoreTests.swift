@@ -74,6 +74,35 @@ final class StateMappingTests: XCTestCase {
         XCTAssertTrue(TaskDisplayState.overrun > .running)
     }
 
+    func testRowIndicatorColorGrammar() {
+        // Gray means deliberately off — never "healthy but idle".
+        XCTAssertEqual(rowIndicator(for: TaskView(name: "a", enabled: false)), .disabled)
+        XCTAssertEqual(rowIndicator(for: TaskView(name: "a", paused: true)), .paused)
+        // A healthy scheduled task is green even while idle.
+        XCTAssertEqual(rowIndicator(for: TaskView(name: "a")), .healthy)
+
+        let sched = Date()
+        let okRun = Run(id: 1, task: "a", scheduledFor: sched, startedAt: sched,
+                        finishedAt: sched, exitCode: 0, outcome: "on_time")
+        XCTAssertEqual(rowIndicator(for: TaskView(name: "a", lastRun: okRun)), .healthy)
+
+        let failedRun = Run(id: 2, task: "a", scheduledFor: sched, startedAt: sched,
+                            finishedAt: sched, exitCode: 3, outcome: "on_time")
+        XCTAssertEqual(rowIndicator(for: TaskView(name: "a", lastRun: failedRun)), .failed)
+
+        let missedRun = Run(id: 3, task: "a", scheduledFor: sched,
+                            outcome: "missed", missedReason: "overlap")
+        XCTAssertEqual(rowIndicator(for: TaskView(name: "a", lastRun: missedRun)), .missedLast)
+
+        // Running (recovering) outranks a bad last run; switch-off outranks both.
+        var runningAfterFailure = TaskView(name: "a", lastRun: failedRun)
+        runningAfterFailure.running = RunningStatus(
+            scheduledFor: sched, startedAt: sched, elapsedSeconds: 5)
+        XCTAssertEqual(rowIndicator(for: runningAfterFailure), .running)
+        let pausedAfterFailure = TaskView(name: "a", paused: true, lastRun: failedRun)
+        XCTAssertEqual(rowIndicator(for: pausedAfterFailure), .paused)
+    }
+
     func testMenuBarQuietWhenHealthy() {
         let summary = menuBarSummary(tasks: [TaskView(name: "a")], daemonUp: true)
         XCTAssertEqual(summary.symbolName, "clock")

@@ -193,17 +193,21 @@ struct TaskRow: View {
 
     private var stateIcon: some View {
         Group {
-            switch state {
+            switch rowIndicator(for: task) {
+            case .disabled:
+                Image(systemName: "minus.circle").foregroundStyle(.secondary)
+            case .paused:
+                Image(systemName: "pause.circle").foregroundStyle(.secondary)
             case .overrun:
                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
             case .running:
-                Image(systemName: "play.circle.fill").foregroundStyle(.blue)
-            case .paused:
-                Image(systemName: "pause.circle").foregroundStyle(.secondary)
-            case .disabled:
-                Image(systemName: "minus.circle").foregroundStyle(.secondary)
-            case .idle:
-                Image(systemName: "circle").foregroundStyle(.secondary)
+                Image(systemName: "play.circle.fill").foregroundStyle(.green)
+            case .failed:
+                Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+            case .missedLast:
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            case .healthy:
+                Image(systemName: "circle.fill").foregroundStyle(.green)
             }
         }
         .font(.title3)

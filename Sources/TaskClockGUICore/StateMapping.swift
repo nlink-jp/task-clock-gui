@@ -59,6 +59,33 @@ public func compactDuration(_ seconds: Double) -> String {
     return "\(m / 60)h\(m % 60 == 0 ? "" : "\(m % 60)m")"
 }
 
+/// The task row's leading indicator, in the same color grammar as the
+/// daemon pilot lamp: green = healthy/active, orange = needs attention,
+/// red = failed, gray = deliberately off (config-disabled or switch off).
+/// A healthy idle task is green — gray would read as "inert" (user
+/// feedback), and idle-on-schedule is the healthy normal state.
+public enum RowIndicator: Equatable, Sendable {
+    case disabled   // config `enabled = false` — gray
+    case paused     // switch off — gray
+    case overrun    // running past a due fire — orange
+    case running    // green (normal operation in progress)
+    case failed     // last run exited non-zero — red
+    case missedLast // last fire was dropped — orange
+    case healthy    // scheduled and fine — green
+}
+
+public func rowIndicator(for task: TaskView) -> RowIndicator {
+    if !task.enabled { return .disabled }
+    if task.overrunSeconds > 0 { return .overrun }
+    if task.running != nil { return .running }
+    if task.paused { return .paused }
+    if let run = task.lastRun {
+        if let exit = run.exitCode, exit != 0 { return .failed }
+        if run.outcome == "missed" { return .missedLast }
+    }
+    return .healthy
+}
+
 /// One task row's display strings.
 public struct TaskRowText: Equatable, Sendable {
     public var state: String    // "idle" / "running 3m" / "running 42m — overrun 12m" / "paused" / "disabled"
