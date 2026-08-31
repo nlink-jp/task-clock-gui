@@ -28,22 +28,19 @@ struct PopoverView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
+    // No manual refresh button: the popover auto-polls every 5 s while
+    // open and every action re-polls, so a display-refresh control would
+    // only be mistaken for the daemon-side "Reload tasks" below. The
+    // timestamp shows the freshness instead.
     private var header: some View {
         HStack {
             Text("task-clock").font(.headline)
             Spacer()
             if let updated = model.lastUpdated {
-                Text(updated, style: .time)
+                Text("as of \(updated, style: .time)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Button {
-                model.refresh()
-            } label: {
-                Image(systemName: "arrow.clockwise")
-            }
-            .buttonStyle(.borderless)
-            .help("Refresh now")
         }
         .padding(EdgeInsets(top: 10, leading: 12, bottom: 8, trailing: 12))
     }
@@ -142,9 +139,9 @@ struct PopoverView: View {
                 }
             }
             HStack {
-                Button("Reload tasks") { model.reload() }
+                Button("Reload task definitions") { model.reload() }
                     .disabled(!model.daemonUp)
-                    .help("Re-read tasks.d (task-clock reload)")
+                    .help("Tell the daemon to re-read its tasks.d config files (task-clock reload)")
                 Spacer()
                 Text("v\(appVersion)")
                     .font(.caption2)
