@@ -3,7 +3,7 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] - 2026-08-31
 
 ### Fixed
 
@@ -16,6 +16,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 - The run-now button is behind a two-click interlock: the first click
   arms it (orange confirm state), the second within 3 seconds fires, and
   a stray click decays harmlessly
+- Bundled task-clock CLI updated to v0.3.0 (live reload of [hooks] and
+  retention_days)
 
 ## [0.2.1] - 2026-08-31
 
