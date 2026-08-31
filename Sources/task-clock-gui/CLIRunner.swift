@@ -77,7 +77,6 @@ enum CLIRunner {
         #if DEBUG
         allowEnvOverride = true
         devPaths = [
-            NSHomeDirectory() + "/works/nlink-jp/_wip/task-clock/dist/task-clock",
             NSHomeDirectory() + "/works/nlink-jp/util-series/task-clock/dist/task-clock",
         ]
         #endif
