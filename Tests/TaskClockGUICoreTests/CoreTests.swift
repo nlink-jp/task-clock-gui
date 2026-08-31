@@ -122,6 +122,13 @@ final class StateMappingTests: XCTestCase {
         atTask.nextExpectedRun = NextExpected(kind: "at", at: date("2026-08-31T10:30:00Z"))
         XCTAssertTrue(taskRowText(atTask, now: now).nextRun.hasPrefix("in 30m"))
 
+        // A fire time the poll has not caught up with yet reads "due now" —
+        // the honest gap state while the per-second display outruns the
+        // 5-second poll.
+        var due = TaskView(name: "a")
+        due.nextExpectedRun = NextExpected(kind: "at", at: date("2026-08-31T09:59:58Z"))
+        XCTAssertTrue(taskRowText(due, now: now).nextRun.hasPrefix("due now"))
+
         var after = TaskView(name: "a")
         after.nextExpectedRun = NextExpected(kind: "after_current", at: nil)
         XCTAssertEqual(taskRowText(after, now: now).nextRun, "after current run")

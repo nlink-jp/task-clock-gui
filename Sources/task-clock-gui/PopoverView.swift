@@ -98,19 +98,27 @@ struct PopoverView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 24)
         } else {
+            // The daemon is polled every 5 s, but countdowns ("in 3s") and
+            // elapsed times are *derived* from timestamps — recompute them
+            // every second locally via TimelineView, or the text freezes
+            // between polls and jumps. Once a fire time passes and the poll
+            // has not caught up yet, the row honestly reads "due now".
+            //
             // ScrollView has ideal height 0 in a menu-bar popover — give it
             // the concrete height PopoverLayout computes, or it collapses.
-            ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(model.tasks, id: \.name) { task in
-                        TaskRow(task: task, model: model)
-                        if task.name != model.tasks.last?.name {
-                            Divider().padding(.leading, 12)
+            TimelineView(.periodic(from: .now, by: 1)) { timeline in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(model.tasks, id: \.name) { task in
+                            TaskRow(task: task, model: model, now: timeline.date)
+                            if task.name != model.tasks.last?.name {
+                                Divider().padding(.leading, 12)
+                            }
                         }
                     }
                 }
+                .frame(height: PopoverLayout.contentHeight(rows: model.tasks.count))
             }
-            .frame(height: PopoverLayout.contentHeight(rows: model.tasks.count))
         }
     }
 
@@ -156,9 +164,10 @@ struct PopoverView: View {
 struct TaskRow: View {
     let task: TaskView
     @ObservedObject var model: AppModel
+    let now: Date
 
     var body: some View {
-        let text = taskRowText(task, now: Date())
+        let text = taskRowText(task, now: now)
         HStack(alignment: .center, spacing: 8) {
             stateIcon
             VStack(alignment: .leading, spacing: 2) {
