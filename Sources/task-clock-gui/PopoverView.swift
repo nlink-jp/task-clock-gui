@@ -151,7 +151,9 @@ struct PopoverView: View {
                     .disabled(!model.daemonUp)
                     .help("Tell the daemon to re-read its tasks.d config files (task-clock reload)")
                 Spacer()
-                Text("v\(appVersion)")
+                // appVersion already carries the v prefix (git describe) —
+                // adding another produced "vv0.1.0".
+                Text(appVersion)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Button("Quit") { NSApplication.shared.terminate(nil) }

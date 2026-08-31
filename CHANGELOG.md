@@ -3,6 +3,15 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-08-31
+
+### Fixed
+
+- Version in the popover footer showed a doubled prefix ("vv0.1.0") —
+  `appVersion` already carries the v from git describe
+- Homebrew cask now declares the real macOS floor (`:sonoma`, 14+ —
+  MenuBarExtra requirement) instead of the template default
+
 ## [0.1.0] - 2026-08-31
 
 ### Added
