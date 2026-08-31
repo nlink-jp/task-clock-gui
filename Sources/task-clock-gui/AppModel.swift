@@ -80,9 +80,12 @@ final class AppModel: ObservableObject {
         let wasDaemonUp = daemonUp
         defer {
             if hasSnapshot {
+                // daemonInstalled is re-read below before this defer runs,
+                // so a deliberate stop (registration removed) stays silent.
                 Notifier.shared.post(transitionEvents(
                     oldTasks: oldTasks, newTasks: tasks,
-                    wasDaemonUp: wasDaemonUp, isDaemonUp: daemonUp))
+                    wasDaemonUp: wasDaemonUp, isDaemonUp: daemonUp,
+                    installedNow: daemonInstalled))
             }
             hasSnapshot = true
         }

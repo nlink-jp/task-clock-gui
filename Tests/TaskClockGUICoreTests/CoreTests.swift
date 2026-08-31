@@ -207,23 +207,34 @@ final class TransitionEventTests: XCTestCase {
         return t
     }
 
-    func testDaemonDownFiresOnceOnTransition() {
-        let down = transitionEvents(oldTasks: [], newTasks: [], wasDaemonUp: true, isDaemonUp: false)
+    func testDaemonDownFiresOnceOnTransitionWhileInstalled() {
+        let down = transitionEvents(
+            oldTasks: [], newTasks: [], wasDaemonUp: true, isDaemonUp: false, installedNow: true)
         XCTAssertEqual(down.map(\.id), ["daemon-down"])
-        let stillDown = transitionEvents(oldTasks: [], newTasks: [], wasDaemonUp: false, isDaemonUp: false)
+        let stillDown = transitionEvents(
+            oldTasks: [], newTasks: [], wasDaemonUp: false, isDaemonUp: false, installedNow: true)
         XCTAssertTrue(stillDown.isEmpty, "edge-triggered: no repeat while it stays down")
+    }
+
+    func testDeliberateStopStaysSilent() {
+        // The user flipped the power switch off (or ran `task-clock
+        // uninstall`): the registration is gone with the daemon — an
+        // intentional stop is not an incident.
+        let events = transitionEvents(
+            oldTasks: [], newTasks: [], wasDaemonUp: true, isDaemonUp: false, installedNow: false)
+        XCTAssertTrue(events.isEmpty, "self-inflicted stop must not notify")
     }
 
     func testOverrunEntryFiresOnceAndSuppressesWhilePersisting() {
         let before = running("a", overrun: 0)
         let entered = running("a", overrun: 90)
         let events = transitionEvents(
-            oldTasks: [before], newTasks: [entered], wasDaemonUp: true, isDaemonUp: true)
+            oldTasks: [before], newTasks: [entered], wasDaemonUp: true, isDaemonUp: true, installedNow: true)
         XCTAssertEqual(events.map(\.id), ["overrun-a"])
 
         let persisting = transitionEvents(
             oldTasks: [entered], newTasks: [running("a", overrun: 150)],
-            wasDaemonUp: true, isDaemonUp: true)
+            wasDaemonUp: true, isDaemonUp: true, installedNow: true)
         XCTAssertTrue(persisting.isEmpty)
     }
 
@@ -234,18 +245,18 @@ final class TransitionEventTests: XCTestCase {
         let before = TaskView(name: "a")
         let after = TaskView(name: "a", lastRun: failed)
         let events = transitionEvents(
-            oldTasks: [before], newTasks: [after], wasDaemonUp: true, isDaemonUp: true)
+            oldTasks: [before], newTasks: [after], wasDaemonUp: true, isDaemonUp: true, installedNow: true)
         XCTAssertEqual(events.map(\.id), ["failure-a-9"])
 
         // Same run seen again: no repeat. A later successful run: nothing.
         XCTAssertTrue(transitionEvents(
-            oldTasks: [after], newTasks: [after], wasDaemonUp: true, isDaemonUp: true).isEmpty)
+            oldTasks: [after], newTasks: [after], wasDaemonUp: true, isDaemonUp: true, installedNow: true).isEmpty)
         let ok = Run(id: 10, task: "a", scheduledFor: sched, startedAt: sched,
                      finishedAt: sched, exitCode: 0, outcome: "on_time")
         var recovered = after
         recovered.lastRun = ok
         XCTAssertTrue(transitionEvents(
-            oldTasks: [after], newTasks: [recovered], wasDaemonUp: true, isDaemonUp: true).isEmpty)
+            oldTasks: [after], newTasks: [recovered], wasDaemonUp: true, isDaemonUp: true, installedNow: true).isEmpty)
     }
 
     func testUnknownPreviousTaskStaysQuiet() {
@@ -253,7 +264,7 @@ final class TransitionEventTests: XCTestCase {
         // fire from its launch-time state.
         let events = transitionEvents(
             oldTasks: [], newTasks: [running("new", overrun: 300)],
-            wasDaemonUp: true, isDaemonUp: true)
+            wasDaemonUp: true, isDaemonUp: true, installedNow: true)
         XCTAssertTrue(events.isEmpty)
     }
 }

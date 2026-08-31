@@ -50,6 +50,10 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   プロンプトの有無を必ず確認。TCC 要求は AppStart.once（起動時）にある。
 - daemonInstalled（plist 存在）と daemonUp（API 応答）は別状態。plist パスは
   Core の `daemonPlistPath`（CLI の label `jp.nlink.task-clock` が契約）。
+- **daemon-down 通知は「登録が残ったまま落ちた」ときだけ**（KeepAlive 失敗 =
+  異常）。登録ごと消えた停止（GUI スイッチ OFF / `task-clock uninstall`）は
+  意図的停止なので通知しない — 意図は intent フラグでなく観測可能な状態
+  （installedNow）から導く。transitionEvents のテストがこの規則を固定。
 
 - CLI の stderr 文言（"daemon is not running" 等）に `CLIRunner.classify` が
   依存。CLI 側の文言変更時はここも追随（テストが fixture で守る）。
