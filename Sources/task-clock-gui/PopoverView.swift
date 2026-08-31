@@ -8,8 +8,6 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
-            daemonRow
-            Divider()
             content
             if let error = model.lastError {
                 Divider()
@@ -28,13 +26,37 @@ struct PopoverView: View {
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    // No manual refresh button: the popover auto-polls every 5 s while
-    // open and every action re-polls, so a display-refresh control would
-    // only be mistaken for the daemon-side "Reload tasks" below. The
-    // timestamp shows the freshness instead.
+    /// Title line carries the daemon pilot lamp + power switch
+    /// (load-spinner's header pattern): the lamp shows the actual state,
+    /// the switch holds the launch-agent intent, and an ON switch with an
+    /// orange lamp is precisely "registered but not answering" — Restart
+    /// is its repair path. No manual refresh button: the popover
+    /// auto-polls every 5 s and every action re-polls; the timestamp shows
+    /// the freshness instead.
     private var header: some View {
-        HStack {
+        let lamp = daemonLamp(installed: model.daemonInstalled, up: model.daemonUp)
+        return HStack(spacing: 6) {
             Text("task-clock").font(.headline)
+            Circle()
+                .fill(lampColor(lamp))
+                .frame(width: 7, height: 7)
+                .help(daemonLampText(lamp))
+            Text(lampCaption(lamp))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Toggle("", isOn: Binding(
+                get: { model.daemonInstalled },
+                set: { model.setDaemonInstalled($0) }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .labelsHidden()
+            .help("Power: register / remove the task-clock launch agent (starts and stops the daemon)")
+            if lamp == .stalled {
+                Button("Restart") { model.setDaemonInstalled(true) }
+                    .controlSize(.small)
+                    .help("Re-register the launch agent (task-clock install)")
+            }
             Spacer()
             if let updated = model.lastUpdated {
                 Text("as of \(updated, style: .time)")
@@ -45,34 +67,12 @@ struct PopoverView: View {
         .padding(EdgeInsets(top: 10, leading: 12, bottom: 8, trailing: 12))
     }
 
-    /// Pilot lamp (actual state) + power switch (launch-agent intent):
-    /// the same controls in every state — no asymmetric big-button/checkbox
-    /// split. An ON switch with an orange lamp is precisely
-    /// "registered but not answering", and Restart is its repair path.
-    private var daemonRow: some View {
-        let lamp = daemonLamp(installed: model.daemonInstalled, up: model.daemonUp)
-        return HStack(spacing: 8) {
-            Circle()
-                .fill(lampColor(lamp))
-                .frame(width: 10, height: 10)
-            Text(daemonLampText(lamp))
-                .font(.callout)
-            if lamp == .stalled {
-                Button("Restart") { model.setDaemonInstalled(true) }
-                    .controlSize(.small)
-                    .help("Re-register the launch agent (task-clock install)")
-            }
-            Spacer()
-            Toggle("", isOn: Binding(
-                get: { model.daemonInstalled },
-                set: { model.setDaemonInstalled($0) }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .labelsHidden()
-            .help("Power: register / remove the task-clock launch agent (starts and stops the daemon)")
+    private func lampCaption(_ state: DaemonLampState) -> String {
+        switch state {
+        case .running: return "running"
+        case .stalled: return "not responding"
+        case .stopped: return "stopped"
         }
-        .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
     }
 
     private func lampColor(_ state: DaemonLampState) -> Color {
