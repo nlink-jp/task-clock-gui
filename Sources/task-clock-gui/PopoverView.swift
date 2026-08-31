@@ -85,7 +85,9 @@ struct PopoverView: View {
 
     @ViewBuilder
     private var content: some View {
-        if !model.daemonUp {
+        if let task = model.historyTask {
+            HistoryView(model: model, taskName: task)
+        } else if !model.daemonUp {
             daemonDown
         } else if model.tasks.isEmpty {
             VStack(spacing: 6) {
@@ -163,39 +165,15 @@ struct PopoverView: View {
     }
 }
 
-struct TaskRow: View {
-    let task: TaskView
-    @ObservedObject var model: AppModel
-    let now: Date
+/// Shared indicator glyphs (task rows and history rows): the quiet normal
+/// state is a small pilot-lamp dot, not a full-size filled symbol — solid
+/// fills read much heavier than the outline glyphs at the same point size.
+struct IndicatorIcon: View {
+    let indicator: RowIndicator
 
     var body: some View {
-        let text = taskRowText(task, now: now)
-        HStack(alignment: .center, spacing: 8) {
-            stateIcon
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(task.name).font(.system(.body, weight: .medium))
-                    Text(text.trigger)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                Text("\(text.state) · next: \(text.nextRun) · last: \(text.lastRun)")
-                    .font(.caption)
-                    .foregroundStyle(stateColor)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 4)
-            controls
-        }
-        .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
-        .frame(height: PopoverLayout.rowHeight)
-    }
-
-    private var state: TaskDisplayState { displayState(for: task) }
-
-    private var stateIcon: some View {
         Group {
-            switch rowIndicator(for: task) {
+            switch indicator {
             case .disabled:
                 Image(systemName: "minus.circle").foregroundStyle(.secondary)
             case .paused:
@@ -209,15 +187,51 @@ struct TaskRow: View {
             case .missedLast:
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             case .healthy:
-                // The quiet normal state: a small pilot-lamp dot, not a
-                // full-size filled symbol — solid fills read much heavier
-                // than the outline glyphs at the same point size.
                 Circle().fill(.green).frame(width: 10, height: 10)
             }
         }
         .font(.title3)
         .frame(width: 22, height: 22)
     }
+}
+
+struct TaskRow: View {
+    let task: TaskView
+    @ObservedObject var model: AppModel
+    let now: Date
+
+    var body: some View {
+        let text = taskRowText(task, now: now)
+        HStack(alignment: .center, spacing: 8) {
+            IndicatorIcon(indicator: rowIndicator(for: task))
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(task.name).font(.system(.body, weight: .medium))
+                    Text(text.trigger)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                Text("\(text.state) · next: \(text.nextRun) · last: \(text.lastRun)")
+                    .font(.caption)
+                    .foregroundStyle(stateColor)
+                    .lineLimit(1)
+            }
+            // The row body opens the run history (Phase 2); the chevron is
+            // the affordance.
+            .contentShape(Rectangle())
+            .onTapGesture { model.openHistory(task: task.name) }
+            .help("Show run history")
+            Spacer(minLength: 4)
+            controls
+        }
+        .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+        .frame(height: PopoverLayout.rowHeight)
+    }
+
+    private var state: TaskDisplayState { displayState(for: task) }
 
     private var stateColor: Color {
         state == .overrun ? .orange : .secondary

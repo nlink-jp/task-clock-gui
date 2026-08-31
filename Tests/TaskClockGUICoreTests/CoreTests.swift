@@ -189,12 +189,70 @@ final class StateMappingTests: XCTestCase {
     }
 }
 
+final class HistoryRowTests: XCTestCase {
+    private let sched = ISO8601DateFormatter().date(from: "2026-08-31T12:04:00Z")!
+
+    func testOkRun() {
+        let run = Run(id: 1, task: "a", scheduledFor: sched,
+                      startedAt: sched.addingTimeInterval(8),
+                      finishedAt: sched.addingTimeInterval(9), exitCode: 0, outcome: "on_time")
+        let text = runRowText(run)
+        XCTAssertEqual(text.startDelay, "+8s")
+        XCTAssertEqual(text.duration, "1s")
+        XCTAssertEqual(text.result, "ok")
+        XCTAssertEqual(runRowIndicator(for: run), .healthy)
+    }
+
+    func testSubSecondStartHidesDelay() {
+        let run = Run(id: 1, task: "a", scheduledFor: sched,
+                      startedAt: sched.addingTimeInterval(0.4),
+                      finishedAt: sched.addingTimeInterval(2), exitCode: 0, outcome: "on_time")
+        XCTAssertEqual(runRowText(run).startDelay, "")
+    }
+
+    func testQueuedAndManualOutcomesAnnotated() {
+        let queued = Run(id: 2, task: "a", scheduledFor: sched,
+                         startedAt: sched.addingTimeInterval(90),
+                         finishedAt: sched.addingTimeInterval(95), exitCode: 0, outcome: "queued")
+        XCTAssertEqual(runRowText(queued).result, "ok (queued)")
+        let manual = Run(id: 3, task: "a", scheduledFor: sched,
+                         startedAt: sched, finishedAt: sched.addingTimeInterval(1),
+                         exitCode: 3, outcome: "manual")
+        XCTAssertEqual(runRowText(manual).result, "exit 3 (manual)")
+        XCTAssertEqual(runRowIndicator(for: manual), .failed)
+    }
+
+    func testMissedRun() {
+        let run = Run(id: 4, task: "a", scheduledFor: sched, outcome: "missed", missedReason: "overlap")
+        let text = runRowText(run)
+        XCTAssertEqual(text.startDelay, "—")
+        XCTAssertEqual(text.duration, "—")
+        XCTAssertEqual(text.result, "missed(overlap)")
+        XCTAssertEqual(runRowIndicator(for: run), .missedLast)
+    }
+
+    func testRunningRun() {
+        let run = Run(id: 5, task: "a", scheduledFor: sched,
+                      startedAt: sched.addingTimeInterval(5), outcome: "on_time")
+        let text = runRowText(run)
+        XCTAssertEqual(text.duration, "running")
+        XCTAssertEqual(text.result, "running")
+        XCTAssertEqual(runRowIndicator(for: run), .running)
+    }
+}
+
 final class PopoverLayoutTests: XCTestCase {
     func testHeightFloorAndCap() {
         XCTAssertEqual(PopoverLayout.contentHeight(rows: 0), PopoverLayout.minHeight)
         XCTAssertEqual(PopoverLayout.contentHeight(rows: 2), 2 * PopoverLayout.rowHeight)
         XCTAssertEqual(PopoverLayout.contentHeight(rows: 100), PopoverLayout.maxHeight)
         XCTAssertGreaterThan(PopoverLayout.contentHeight(rows: 1), 0, "must never collapse to zero")
+    }
+
+    func testHistoryHeightFloorAndCap() {
+        XCTAssertEqual(PopoverLayout.historyContentHeight(rows: 0), PopoverLayout.minHeight)
+        XCTAssertEqual(PopoverLayout.historyContentHeight(rows: 5), 5 * PopoverLayout.historyRowHeight)
+        XCTAssertEqual(PopoverLayout.historyContentHeight(rows: 1000), PopoverLayout.maxHeight)
     }
 }
 

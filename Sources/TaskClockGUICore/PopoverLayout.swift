@@ -15,4 +15,12 @@ public enum PopoverLayout {
         let wanted = CGFloat(max(rows, 1)) * rowHeight
         return min(max(wanted, minHeight), maxHeight)
     }
+
+    /// History rows are slimmer than task rows; same floor/cap discipline.
+    public static let historyRowHeight: CGFloat = 28
+
+    public static func historyContentHeight(rows: Int) -> CGFloat {
+        let wanted = CGFloat(max(rows, 1)) * historyRowHeight
+        return min(max(wanted, minHeight), maxHeight)
+    }
 }

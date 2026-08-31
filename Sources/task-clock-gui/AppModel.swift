@@ -15,6 +15,11 @@ final class AppModel: ObservableObject {
     /// distinct from daemonUp: a foreground `serve` is up but not installed.
     @Published var daemonInstalled = false
 
+    /// Non-nil while the popover shows a task's run history (Phase 2).
+    @Published var historyTask: String?
+    @Published var historyRuns: [Run] = []
+    @Published var historyError: String?
+
     private var timer: Timer?
     private var activity: NSObjectProtocol?
 
@@ -45,6 +50,45 @@ final class AppModel: ObservableObject {
 
     func popoverClosed() {
         reschedule(interval: Self.backgroundInterval)
+        // Reopening always lands on the task list, not a stale history.
+        closeHistory()
+    }
+
+    // MARK: - Run history (Phase 2)
+
+    func openHistory(task: String) {
+        historyTask = task
+        historyRuns = []
+        historyError = nil
+        fetchHistory()
+    }
+
+    func closeHistory() {
+        historyTask = nil
+        historyRuns = []
+        historyError = nil
+    }
+
+    private func fetchHistory() {
+        guard let task = historyTask else { return }
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let outcome: Result<[Run], Error>
+            do {
+                outcome = .success(try CLIRunner.history(task: task, limit: 30))
+            } catch {
+                outcome = .failure(error)
+            }
+            await MainActor.run { [weak self] in
+                guard let self, self.historyTask == task else { return }
+                switch outcome {
+                case .success(let runs):
+                    self.historyRuns = runs
+                    self.historyError = nil
+                case .failure(let error):
+                    self.historyError = error.localizedDescription
+                }
+            }
+        }
     }
 
     private func reschedule(interval: TimeInterval) {
@@ -106,6 +150,11 @@ final class AppModel: ObservableObject {
         }
         self.daemonInstalled = FileManager.default.fileExists(
             atPath: daemonPlistPath(home: NSHomeDirectory()))
+        // Keep an open history view live (running rows finish, new fires
+        // append) on the same cadence as the status poll.
+        if historyTask != nil {
+            fetchHistory()
+        }
     }
 
     // MARK: - Actions
