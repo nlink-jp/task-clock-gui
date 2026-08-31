@@ -31,11 +31,14 @@ glance, and offers trigger / pause / resume / reload from a popover.
   pattern). Config resolution, the API key and HTTP belong to the CLI; the
   GUI only decodes and renders
 - **Daemon control**: sending the user back to a terminal for daemon
-  lifecycle while offering a GUI is incoherent (user feedback) — following
-  sensor-lens-gui's toggle shape, a "Background daemon" toggle (bundled
-  CLI install/uninstall) plus a "Start daemon" button on the daemon-down
-  view. Installed (plist present) and reachable (API answers) are distinct
-  states
+  lifecycle while offering a GUI is incoherent (user feedback). The first
+  cut was asymmetric (a big button when down, a checkbox when up) — also
+  flagged by the user — and became a persistent **pilot lamp + power
+  switch** row: the lamp shows the actual state (green running / orange
+  registered-but-unresponsive / gray stopped), the switch holds the intent
+  (launch-agent registration via the bundled CLI install/uninstall). Their
+  independence makes "installed ≠ reachable" directly visible (orange lamp
+  on an ON switch is a broken registration; Restart is its repair path)
 - **Launch at login**: an SMAppService toggle. Ambiguous statuses
   (`.notFound` etc.) fold into "not enabled yet" and never disable the
   toggle; after acting, the actual state is re-read and a mismatch

@@ -258,6 +258,22 @@ final class TransitionEventTests: XCTestCase {
     }
 }
 
+final class DaemonLampTests: XCTestCase {
+    func testLampShowsActualStateIndependentOfSwitch() {
+        // Running wins regardless of registration (foreground serve counts).
+        XCTAssertEqual(daemonLamp(installed: true, up: true), .running)
+        XCTAssertEqual(daemonLamp(installed: false, up: true), .running)
+        // ON switch + dead daemon = the distinct "stalled" state.
+        XCTAssertEqual(daemonLamp(installed: true, up: false), .stalled)
+        XCTAssertEqual(daemonLamp(installed: false, up: false), .stopped)
+    }
+
+    func testLampTextsAreDistinct() {
+        let texts = [DaemonLampState.running, .stalled, .stopped].map(daemonLampText)
+        XCTAssertEqual(Set(texts).count, 3)
+    }
+}
+
 final class DaemonInstallTests: XCTestCase {
     func testPlistPath() {
         XCTAssertEqual(

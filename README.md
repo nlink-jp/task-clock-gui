@@ -23,9 +23,10 @@ last run's captured log.
   with reason)
 - **Actions in place**: run now, pause / resume, reload tasks.d, reveal the
   last run's log in Finder — failures are reported in the same popover
-- **Daemon lifecycle without a terminal**: a "Background daemon" toggle
-  registers/removes the launch agent via the bundled CLI, and the
-  daemon-down view offers Start / Reinstall directly
+- **Daemon lifecycle without a terminal**: a persistent pilot-lamp row —
+  green (running), orange (registered but not responding, with a Restart
+  button), gray (stopped) — with a power switch that registers/removes the
+  launch agent via the bundled CLI
 - **Launch at login** toggle (SMAppService), with honest feedback when
   macOS wants approval in System Settings
 - **Notifications**: a banner when a task enters overrun, when a run

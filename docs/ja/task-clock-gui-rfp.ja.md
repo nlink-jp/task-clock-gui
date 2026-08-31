@@ -27,9 +27,12 @@ reload をポップオーバーから実行できる薄いフロントエンド�
 - **データ経路**: 同梱の署名済み task-clock CLI を `--json` で実行（org 定型）。
   config 解決・API キー・HTTP は CLI が所有し、GUI は decode と表示のみ
 - **デーモン制御**: GUI があるのにデーモン操作だけ CLI に戻すのは不整合
-  （ユーザー指摘）— sensor-lens-gui のトグル型に倣い、「Background daemon」
-  トグル（同梱 CLI の install/uninstall）とデーモン停止画面の「Start daemon」
-  ボタンを提供。installed（plist 存在）と reachable（API 応答）は別状態として扱う
+  （ユーザー指摘）。当初は「停止時は大ボタン・稼働時はチェックボックス」の
+  非対称 UI だったが、これもユーザー指摘で**パイロットランプ + 電源スイッチ**の
+  常設行に統一: ランプは実状態（緑=稼働 / 橙=登録済み無応答 / 灰=停止）、
+  スイッチは launch agent 登録の意図（同梱 CLI の install/uninstall）。両者が
+  独立していることが「installed ≠ reachable」の設計をそのまま可視化する
+  （橙ランプ + ON スイッチ = 壊れた登録、Restart が修復パス）
 - **ログイン時起動**: SMAppService トグル。`.notFound` 等の曖昧 status は
   「未登録」に畳み、トグルは disable しない。実行後に実状態を再読して、
   食い違えば（requiresApproval）System Settings への誘導を同じ画面に出す

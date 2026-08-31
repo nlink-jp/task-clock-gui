@@ -8,6 +8,8 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
+            daemonRow
+            Divider()
             content
             if let error = model.lastError {
                 Divider()
@@ -46,6 +48,44 @@ struct PopoverView: View {
         .padding(EdgeInsets(top: 10, leading: 12, bottom: 8, trailing: 12))
     }
 
+    /// Pilot lamp (actual state) + power switch (launch-agent intent):
+    /// the same controls in every state — no asymmetric big-button/checkbox
+    /// split. An ON switch with an orange lamp is precisely
+    /// "registered but not answering", and Restart is its repair path.
+    private var daemonRow: some View {
+        let lamp = daemonLamp(installed: model.daemonInstalled, up: model.daemonUp)
+        return HStack(spacing: 8) {
+            Circle()
+                .fill(lampColor(lamp))
+                .frame(width: 10, height: 10)
+            Text(daemonLampText(lamp))
+                .font(.callout)
+            if lamp == .stalled {
+                Button("Restart") { model.setDaemonInstalled(true) }
+                    .controlSize(.small)
+                    .help("Re-register the launch agent (task-clock install)")
+            }
+            Spacer()
+            Toggle("", isOn: Binding(
+                get: { model.daemonInstalled },
+                set: { model.setDaemonInstalled($0) }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .labelsHidden()
+            .help("Power: register / remove the task-clock launch agent (starts and stops the daemon)")
+        }
+        .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+    }
+
+    private func lampColor(_ state: DaemonLampState) -> Color {
+        switch state {
+        case .running: return .green
+        case .stalled: return .orange
+        case .stopped: return Color(nsColor: .tertiaryLabelColor)
+        }
+    }
+
     @ViewBuilder
     private var content: some View {
         if !model.daemonUp {
@@ -78,42 +118,19 @@ struct PopoverView: View {
     }
 
     private var daemonDown: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Daemon is not running", systemImage: "clock.badge.questionmark")
-                .font(.callout)
-            Text(model.daemonInstalled
-                ? "The launch agent is installed but not responding — it may still be starting, or its config may be invalid."
-                : "task-clock runs as a background daemon. Install its launch agent to start it now and at every login.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            HStack {
-                if model.daemonInstalled {
-                    Button("Reinstall & restart daemon") { model.setDaemonInstalled(true) }
-                } else {
-                    Button("Start daemon") { model.setDaemonInstalled(true) }
-                        .buttonStyle(.borderedProminent)
-                }
-                Button("Retry") { model.refresh() }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
+        Text(model.daemonInstalled
+            ? "The launch agent is registered but not answering — it may still be starting, or its config may be invalid (try Restart above; `task-clock validate` diagnoses config problems)."
+            : "task-clock runs as a background daemon. Flip the switch above to register its launch agent — it starts now and at every login.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
     }
 
     private var footer: some View {
         VStack(spacing: 6) {
-            HStack(spacing: 12) {
-                // Kept enabled in every state: installing over a broken
-                // registration is the repair path, and uninstalling stops
-                // the daemon — both answered by the daemon, not guessed.
-                Toggle("Background daemon", isOn: Binding(
-                    get: { model.daemonInstalled },
-                    set: { model.setDaemonInstalled($0) }
-                ))
-                .toggleStyle(.checkbox)
-                .font(.caption)
-                .help("Register / remove the task-clock launch agent (starts and stops the daemon)")
-                if model.loginItemAvailable {
+            if model.loginItemAvailable {
+                HStack {
                     Toggle("Launch at login", isOn: Binding(
                         get: { model.launchAtLogin },
                         set: { model.setLaunchAtLogin($0) }
@@ -121,8 +138,8 @@ struct PopoverView: View {
                     .toggleStyle(.checkbox)
                     .font(.caption)
                     .help("Open this menu-bar app when you log in")
+                    Spacer()
                 }
-                Spacer()
             }
             HStack {
                 Button("Reload tasks") { model.reload() }

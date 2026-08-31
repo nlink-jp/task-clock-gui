@@ -12,9 +12,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
   popover rows (state / trigger / next run / last run) with run-now,
   pause/resume, reload, and reveal-log actions; App Nap-proof polling
   (30 s background / 5 s open); bundled signed CLI as the data path
-- Daemon lifecycle from the GUI: "Background daemon" toggle
-  (install/uninstall via the bundled CLI) and Start/Reinstall on the
-  daemon-down view, with post-action state verification
+- Daemon lifecycle from the GUI: a persistent pilot-lamp row (green
+  running / orange registered-but-unresponsive with Restart / gray
+  stopped) and a power switch driving install/uninstall via the bundled
+  CLI, with post-action state verification
 - Launch-at-login toggle (SMAppService; ambiguous statuses never disable
   the control, mismatches are reported honestly)
 - Local notifications for overrun entry, run failure, and daemon-down
