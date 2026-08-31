@@ -31,6 +31,7 @@ BREW_DESC      := Menu-bar front end for the task-clock scheduler
 BREW_NAME      := $(NAME)
 BREW_APP       := $(APP_NAME).app
 BREW_BUNDLE_ID := $(BUNDLE_ID)
+BREW_MACOS_FLOOR := :sonoma
 include scripts/release-brew.mk
 
 .PHONY: build build-app package verify-release test run clean
