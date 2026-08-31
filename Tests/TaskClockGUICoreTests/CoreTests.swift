@@ -183,6 +183,99 @@ final class SingleInstanceTests: XCTestCase {
     }
 }
 
+final class LoginFeedbackTests: XCTestCase {
+    func testSilentWhenStateMatchesRequest() {
+        XCTAssertNil(loginItemFeedback(requested: true, nowEnabled: true))
+        XCTAssertNil(loginItemFeedback(requested: false, nowEnabled: false))
+    }
+
+    func testSpeaksWhenTheSwitchSnappedBack() {
+        // "No error but nothing happened" must never pass silently.
+        let enableFailed = loginItemFeedback(requested: true, nowEnabled: false)
+        XCTAssertNotNil(enableFailed)
+        XCTAssertTrue(enableFailed!.contains("System Settings"))
+        XCTAssertNotNil(loginItemFeedback(requested: false, nowEnabled: true))
+    }
+}
+
+final class TransitionEventTests: XCTestCase {
+    private func running(_ name: String, overrun: Double) -> TaskView {
+        var t = TaskView(
+            name: name,
+            running: RunningStatus(scheduledFor: Date(), startedAt: Date(), elapsedSeconds: 60))
+        t.overrunSeconds = overrun
+        return t
+    }
+
+    func testDaemonDownFiresOnceOnTransition() {
+        let down = transitionEvents(oldTasks: [], newTasks: [], wasDaemonUp: true, isDaemonUp: false)
+        XCTAssertEqual(down.map(\.id), ["daemon-down"])
+        let stillDown = transitionEvents(oldTasks: [], newTasks: [], wasDaemonUp: false, isDaemonUp: false)
+        XCTAssertTrue(stillDown.isEmpty, "edge-triggered: no repeat while it stays down")
+    }
+
+    func testOverrunEntryFiresOnceAndSuppressesWhilePersisting() {
+        let before = running("a", overrun: 0)
+        let entered = running("a", overrun: 90)
+        let events = transitionEvents(
+            oldTasks: [before], newTasks: [entered], wasDaemonUp: true, isDaemonUp: true)
+        XCTAssertEqual(events.map(\.id), ["overrun-a"])
+
+        let persisting = transitionEvents(
+            oldTasks: [entered], newTasks: [running("a", overrun: 150)],
+            wasDaemonUp: true, isDaemonUp: true)
+        XCTAssertTrue(persisting.isEmpty)
+    }
+
+    func testFailureFiresForNewFailedRunOnly() {
+        let sched = Date()
+        let failed = Run(id: 9, task: "a", scheduledFor: sched, startedAt: sched,
+                         finishedAt: sched, exitCode: 3, outcome: "on_time")
+        let before = TaskView(name: "a")
+        let after = TaskView(name: "a", lastRun: failed)
+        let events = transitionEvents(
+            oldTasks: [before], newTasks: [after], wasDaemonUp: true, isDaemonUp: true)
+        XCTAssertEqual(events.map(\.id), ["failure-a-9"])
+
+        // Same run seen again: no repeat. A later successful run: nothing.
+        XCTAssertTrue(transitionEvents(
+            oldTasks: [after], newTasks: [after], wasDaemonUp: true, isDaemonUp: true).isEmpty)
+        let ok = Run(id: 10, task: "a", scheduledFor: sched, startedAt: sched,
+                     finishedAt: sched, exitCode: 0, outcome: "on_time")
+        var recovered = after
+        recovered.lastRun = ok
+        XCTAssertTrue(transitionEvents(
+            oldTasks: [after], newTasks: [recovered], wasDaemonUp: true, isDaemonUp: true).isEmpty)
+    }
+
+    func testUnknownPreviousTaskStaysQuiet() {
+        // A task first seen in this snapshot (fresh launch, reload) must not
+        // fire from its launch-time state.
+        let events = transitionEvents(
+            oldTasks: [], newTasks: [running("new", overrun: 300)],
+            wasDaemonUp: true, isDaemonUp: true)
+        XCTAssertTrue(events.isEmpty)
+    }
+}
+
+final class DaemonInstallTests: XCTestCase {
+    func testPlistPath() {
+        XCTAssertEqual(
+            daemonPlistPath(home: "/Users/x"),
+            "/Users/x/Library/LaunchAgents/jp.nlink.task-clock.plist")
+    }
+
+    func testFeedbackSilentOnMatch() {
+        XCTAssertNil(daemonInstallFeedback(requested: true, installedNow: true))
+        XCTAssertNil(daemonInstallFeedback(requested: false, installedNow: false))
+    }
+
+    func testFeedbackSpeaksOnMismatch() {
+        XCTAssertNotNil(daemonInstallFeedback(requested: true, installedNow: false))
+        XCTAssertNotNil(daemonInstallFeedback(requested: false, installedNow: true))
+    }
+}
+
 final class BinaryResolutionTests: XCTestCase {
     func testBundledWinsInRelease() {
         let path = resolveCLIBinary(

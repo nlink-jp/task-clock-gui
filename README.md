@@ -23,6 +23,15 @@ last run's captured log.
   with reason)
 - **Actions in place**: run now, pause / resume, reload tasks.d, reveal the
   last run's log in Finder — failures are reported in the same popover
+- **Daemon lifecycle without a terminal**: a "Background daemon" toggle
+  registers/removes the launch agent via the bundled CLI, and the
+  daemon-down view offers Start / Reinstall directly
+- **Launch at login** toggle (SMAppService), with honest feedback when
+  macOS wants approval in System Settings
+- **Notifications**: a banner when a task enters overrun, when a run
+  fails, and when the daemon becomes unreachable — permission is requested
+  at first launch (answer the one-time prompt), and persisting states never
+  repeat their banner
 - **Self-contained**: bundles the Developer-ID-signed task-clock CLI and
   drives it with `--json`; the CLI owns the config, the API key, and the
   daemon connection

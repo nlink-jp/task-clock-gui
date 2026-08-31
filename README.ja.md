@@ -21,6 +21,14 @@ task-clock は全発火を「予定 vs 実績」で記録します。本アプ�
   missed+理由）
 - **その場のアクション**: 即時実行、pause / resume、tasks.d の reload、
   最終 run ログの Finder 表示 — 失敗は操作したその画面に表示
+- **ターミナル不要のデーモン管理**: 「Background daemon」トグルが同梱 CLI
+  経由で launch agent を登録/削除。デーモン停止画面には Start / Reinstall
+  ボタン
+- **ログイン時起動**トグル（SMAppService）。System Settings での承認が要る
+  場合は正直にそう伝える
+- **通知**: overrun への突入・run 失敗・デーモン到達不能でバナー表示。
+  許可は初回起動時に要求（一度きりのプロンプトに応答してください）。継続中の
+  状態はバナーを繰り返さない
 - **自己完結**: Developer ID 署名済み task-clock CLI を同梱し `--json` で
   実行。config・API キー・デーモン接続は CLI が所有
 

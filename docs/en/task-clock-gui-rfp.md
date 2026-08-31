@@ -30,6 +30,22 @@ glance, and offers trigger / pause / resume / reload from a popover.
 - **Data path**: runs the bundled signed task-clock CLI with `--json` (org
   pattern). Config resolution, the API key and HTTP belong to the CLI; the
   GUI only decodes and renders
+- **Daemon control**: sending the user back to a terminal for daemon
+  lifecycle while offering a GUI is incoherent (user feedback) — following
+  sensor-lens-gui's toggle shape, a "Background daemon" toggle (bundled
+  CLI install/uninstall) plus a "Start daemon" button on the daemon-down
+  view. Installed (plist present) and reachable (API answers) are distinct
+  states
+- **Launch at login**: an SMAppService toggle. Ambiguous statuses
+  (`.notFound` etc.) fold into "not enabled yet" and never disable the
+  toggle; after acting, the actual state is re-read and a mismatch
+  (requiresApproval) is reported in the same view
+- **Notifications**: local banners for entering overrun, a failed run, and
+  the daemon becoming unreachable (edge-triggered — persisting states do
+  not repeat). **TCC authorization is requested at launch** (user
+  feedback): the prompt only appears while .notDetermined, and the moment a
+  production banner is needed nobody is at the keyboard to answer it.
+  Denials surface on stderr with the recovery path
 
 ## 3. Design Decisions
 
@@ -48,11 +64,11 @@ glance, and offers trigger / pause / resume / reload from a popover.
 ## 4. Development Plan
 
 - Phase 1 (Core): state display + actions (trigger/pause/resume/reload) +
-  tests (decode fixtures, state mapping, layout, single-instance, binary
-  resolution)
-- Phase 2: mini history view, launch-at-login (SMAppService — fold
-  `.notFound` into "not enabled yet"), notifications (overrun streak via
-  UNUserNotification)
+  daemon control + launch-at-login + notifications (the latter three pulled
+  forward from Phase 2 on user feedback) + tests (decode fixtures, state
+  mapping, transition detection, layout, single-instance, binary
+  resolution, post-action verification feedback)
+- Phase 2: mini history view
 - Phase 3: app icon, release (cask distribution)
 
 ## 5. Required API Scopes / Permissions

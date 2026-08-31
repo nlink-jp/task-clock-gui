@@ -81,24 +81,59 @@ struct PopoverView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Daemon is not running", systemImage: "clock.badge.questionmark")
                 .font(.callout)
-            Text("Start it with `task-clock serve`, or register the launch agent with `task-clock install`.")
+            Text(model.daemonInstalled
+                ? "The launch agent is installed but not responding — it may still be starting, or its config may be invalid."
+                : "task-clock runs as a background daemon. Install its launch agent to start it now and at every login.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            HStack {
+                if model.daemonInstalled {
+                    Button("Reinstall & restart daemon") { model.setDaemonInstalled(true) }
+                } else {
+                    Button("Start daemon") { model.setDaemonInstalled(true) }
+                        .buttonStyle(.borderedProminent)
+                }
+                Button("Retry") { model.refresh() }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
     }
 
     private var footer: some View {
-        HStack {
-            Button("Reload tasks") { model.reload() }
-                .disabled(!model.daemonUp)
-                .help("Re-read tasks.d (task-clock reload)")
-            Spacer()
-            Text("v\(appVersion)")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Button("Quit") { NSApplication.shared.terminate(nil) }
+        VStack(spacing: 6) {
+            HStack(spacing: 12) {
+                // Kept enabled in every state: installing over a broken
+                // registration is the repair path, and uninstalling stops
+                // the daemon — both answered by the daemon, not guessed.
+                Toggle("Background daemon", isOn: Binding(
+                    get: { model.daemonInstalled },
+                    set: { model.setDaemonInstalled($0) }
+                ))
+                .toggleStyle(.checkbox)
+                .font(.caption)
+                .help("Register / remove the task-clock launch agent (starts and stops the daemon)")
+                if model.loginItemAvailable {
+                    Toggle("Launch at login", isOn: Binding(
+                        get: { model.launchAtLogin },
+                        set: { model.setLaunchAtLogin($0) }
+                    ))
+                    .toggleStyle(.checkbox)
+                    .font(.caption)
+                    .help("Open this menu-bar app when you log in")
+                }
+                Spacer()
+            }
+            HStack {
+                Button("Reload tasks") { model.reload() }
+                    .disabled(!model.daemonUp)
+                    .help("Re-read tasks.d (task-clock reload)")
+                Spacer()
+                Text("v\(appVersion)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Button("Quit") { NSApplication.shared.terminate(nil) }
+            }
         }
         .padding(EdgeInsets(top: 8, leading: 12, bottom: 10, trailing: 12))
     }

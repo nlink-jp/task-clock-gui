@@ -26,6 +26,17 @@ reload をポップオーバーから実行できる薄いフロントエンド�
   （NSProcessInfo activity）必須 — 無いとタイマーが凍り表示が黙って古くなる
 - **データ経路**: 同梱の署名済み task-clock CLI を `--json` で実行（org 定型）。
   config 解決・API キー・HTTP は CLI が所有し、GUI は decode と表示のみ
+- **デーモン制御**: GUI があるのにデーモン操作だけ CLI に戻すのは不整合
+  （ユーザー指摘）— sensor-lens-gui のトグル型に倣い、「Background daemon」
+  トグル（同梱 CLI の install/uninstall）とデーモン停止画面の「Start daemon」
+  ボタンを提供。installed（plist 存在）と reachable（API 応答）は別状態として扱う
+- **ログイン時起動**: SMAppService トグル。`.notFound` 等の曖昧 status は
+  「未登録」に畳み、トグルは disable しない。実行後に実状態を再読して、
+  食い違えば（requiresApproval）System Settings への誘導を同じ画面に出す
+- **通知**: overrun への遷移・run 失敗・デーモン到達不能をローカル通知
+  （edge-triggered、継続状態では繰り返さない）。**TCC 許可要求は起動時**
+  （ユーザー指摘）— プロンプトは .notDetermined の時しか出ず、本番の通知が
+  必要な瞬間には応答できる人がいない。拒否は stderr に復旧手順つきで表面化
 
 ## 3. Design Decisions
 
@@ -41,10 +52,11 @@ reload をポップオーバーから実行できる薄いフロントエンド�
 
 ## 4. Development Plan
 
-- Phase 1 (Core): 状態表示 + アクション（trigger/pause/resume/reload）+ テスト
-  （decode fixture・状態写像・レイアウト・単一インスタンス・バイナリ解決）
-- Phase 2: 履歴ミニビュー、ログイン時起動（SMAppService — `.notFound` は
-  「未登録」に畳む）、通知（overrun streak を UNUserNotification へ）
+- Phase 1 (Core): 状態表示 + アクション（trigger/pause/resume/reload）+
+  デーモン制御 + ログイン時起動 + 通知（当初 Phase 2 だった 3 点はユーザー
+  指摘により前倒し）+ テスト（decode fixture・状態写像・遷移検出・レイアウト・
+  単一インスタンス・バイナリ解決・検証フィードバック）
+- Phase 2: 履歴ミニビュー
 - Phase 3: アイコン作成、リリース（cask 配布）
 
 ## 5. Required API Scopes / Permissions

@@ -10,6 +10,10 @@ final class AppModel: ObservableObject {
     /// Shown in the popover itself — errors must surface where the user acts.
     @Published var lastError: String?
     @Published var lastUpdated: Date?
+    @Published var launchAtLogin = false
+    /// Whether the task-clock LaunchAgent is registered (plist present) —
+    /// distinct from daemonUp: a foreground `serve` is up but not installed.
+    @Published var daemonInstalled = false
 
     private var timer: Timer?
     private var activity: NSObjectProtocol?
@@ -28,11 +32,14 @@ final class AppModel: ObservableObject {
                 reason: "task-clock daemon polling")
         }
         reschedule(interval: Self.backgroundInterval)
+        launchAtLogin = LoginItem.isEnabled
         refresh()
     }
 
     func popoverOpened() {
         reschedule(interval: Self.foregroundInterval)
+        // Re-read: the user can flip this in System Settings behind our back.
+        launchAtLogin = LoginItem.isEnabled
         refresh()
     }
 
@@ -64,7 +71,21 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Whether a snapshot has been applied since launch — transition
+    /// banners need a real "before", or launch-time states fire stale ones.
+    private var hasSnapshot = false
+
     private func apply(_ outcome: Result<[TaskView], Error>) {
+        let oldTasks = tasks
+        let wasDaemonUp = daemonUp
+        defer {
+            if hasSnapshot {
+                Notifier.shared.post(transitionEvents(
+                    oldTasks: oldTasks, newTasks: tasks,
+                    wasDaemonUp: wasDaemonUp, isDaemonUp: daemonUp))
+            }
+            hasSnapshot = true
+        }
         switch outcome {
         case .success(let tasks):
             self.tasks = tasks
@@ -80,6 +101,8 @@ final class AppModel: ObservableObject {
             }
             self.lastUpdated = Date()
         }
+        self.daemonInstalled = FileManager.default.fileExists(
+            atPath: daemonPlistPath(home: NSHomeDirectory()))
     }
 
     // MARK: - Actions
@@ -113,5 +136,56 @@ final class AppModel: ObservableObject {
 
     var menuBar: MenuBarSummary {
         menuBarSummary(tasks: tasks, daemonUp: daemonUp)
+    }
+
+    // MARK: - Daemon lifecycle
+
+    func setDaemonInstalled(_ requested: Bool) {
+        Task.detached(priority: .userInitiated) { [weak self] in
+            var failure: String?
+            do {
+                if requested {
+                    try CLIRunner.installDaemon()
+                } else {
+                    try CLIRunner.uninstallDaemon()
+                }
+            } catch {
+                failure = error.localizedDescription
+            }
+            let installedNow = FileManager.default.fileExists(
+                atPath: daemonPlistPath(home: NSHomeDirectory()))
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.daemonInstalled = installedNow
+                if let failure {
+                    self.lastError = failure
+                } else if let feedback = daemonInstallFeedback(
+                    requested: requested, installedNow: installedNow) {
+                    self.lastError = feedback
+                }
+            }
+            // Give launchd a moment to start/stop the daemon, then re-poll.
+            try? await Task.sleep(for: .seconds(1))
+            await self?.refresh()
+        }
+    }
+
+    // MARK: - Launch at login
+
+    var loginItemAvailable: Bool { LoginItem.isAvailable }
+
+    func setLaunchAtLogin(_ requested: Bool) {
+        do {
+            try LoginItem.setEnabled(requested)
+        } catch {
+            lastError = "Launch at login: \(error.localizedDescription)"
+        }
+        // Report the state that actually took effect, never the request —
+        // and when they differ without an error, say so (requiresApproval).
+        launchAtLogin = LoginItem.isEnabled
+        if lastError == nil, let feedback = loginItemFeedback(
+            requested: requested, nowEnabled: launchAtLogin) {
+            lastError = feedback
+        }
     }
 }

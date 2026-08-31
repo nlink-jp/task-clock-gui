@@ -134,4 +134,9 @@ enum CLIRunner {
     static func pause(task: String) throws { _ = try run(["pause", task]) }
     static func resume(task: String) throws { _ = try run(["resume", task]) }
     static func reload() throws { _ = try run(["reload"]) }
+
+    /// Daemon lifecycle: register / remove the LaunchAgent (RunAtLoad +
+    /// KeepAlive), so the GUI never sends the user to a terminal for it.
+    static func installDaemon() throws { _ = try run(["install"]) }
+    static func uninstallDaemon() throws { _ = try run(["uninstall"]) }
 }

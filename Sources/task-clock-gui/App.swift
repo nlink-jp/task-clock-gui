@@ -39,6 +39,10 @@ enum AppStart {
     static func once(model: AppModel) {
         guard !started else { return }
         started = true
+        // TCC prompt timing: authorization must be requested now, at
+        // launch — when a banner is finally needed there is nobody at the
+        // keyboard to answer the one-time prompt.
+        Notifier.shared.setupAtLaunch()
         model.start()
     }
 }

@@ -34,14 +34,22 @@ Sources/TaskClockGUICore/    # 純関数層（テスト対象）
   BinaryResolution.swift     #   CLI バイナリ解決順（bundled が信頼アンカー）
 Sources/task-clock-gui/      # UI 層（薄く保つ）
   Entry.swift                #   @main enum Main: version/help → ガード → App.main()
-  App.swift                  #   MenuBarExtra(.window) + 起動フック
-  AppModel.swift             #   ポーリング（30s/5s）+ App Nap opt-out + アクション
+  App.swift                  #   MenuBarExtra(.window) + 起動フック（TCC 要求もここ）
+  AppModel.swift             #   ポーリング（30s/5s）+ App Nap opt-out + アクション + 遷移通知
   CLIRunner.swift            #   CLI 実行 + stderr 分類（daemonDown は独立状態）
-  PopoverView.swift          #   タスク行 + アクション + エラー表示
+  LoginItem.swift            #   SMAppService（曖昧 status は「未登録」に畳む）
+  Notifier.swift             #   UNUserNotificationCenter（起動時に許可要求・拒否は stderr）
+  PopoverView.swift          #   タスク行 + アクション + デーモン/ログイントグル + エラー表示
 Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト / ガード / 解決順
 ```
 
 ## Gotchas
+
+- **通知許可プロンプト未回答のまま kill 厳禁**（永久 denied 化 — 復旧は
+  System Settings › Notifications のみ）。.app スモークテストで kill する前に
+  プロンプトの有無を必ず確認。TCC 要求は AppStart.once（起動時）にある。
+- daemonInstalled（plist 存在）と daemonUp（API 応答）は別状態。plist パスは
+  Core の `daemonPlistPath`（CLI の label `jp.nlink.task-clock` が契約）。
 
 - CLI の stderr 文言（"daemon is not running" 等）に `CLIRunner.classify` が
   依存。CLI 側の文言変更時はここも追随（テストが fixture で守る）。
