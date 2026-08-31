@@ -207,10 +207,14 @@ struct TaskRow: View {
             case .missedLast:
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             case .healthy:
-                Image(systemName: "circle.fill").foregroundStyle(.green)
+                // The quiet normal state: a small pilot-lamp dot, not a
+                // full-size filled symbol — solid fills read much heavier
+                // than the outline glyphs at the same point size.
+                Circle().fill(.green).frame(width: 10, height: 10)
             }
         }
         .font(.title3)
+        .frame(width: 22, height: 22)
     }
 
     private var stateColor: Color {
