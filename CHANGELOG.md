@@ -3,6 +3,14 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-08-31
+
+### Changed
+
+- Bundled task-clock CLI updated to v0.2.1 (fixes `validate` panicking on
+  watermark tasks). The GUI itself never calls `validate`, so no GUI code
+  changed — this release just stops shipping a binary with a known crash
+
 ## [0.2.0] - 2026-08-31
 
 ### Added
