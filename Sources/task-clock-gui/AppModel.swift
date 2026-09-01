@@ -14,6 +14,10 @@ final class AppModel: ObservableObject {
     /// Whether the task-clock LaunchAgent is registered (plist present) —
     /// distinct from daemonUp: a foreground `serve` is up but not installed.
     @Published var daemonInstalled = false
+    /// Whether the service is enabled in launchd (the run intent the power
+    /// switch holds): `task-clock stop` disables it durably, `start`
+    /// re-enables. Distinct from both installed (setup) and up (actual).
+    @Published var daemonEnabled = true
 
     /// Notifications are hard-denied in System Settings — surfaced in the
     /// popover because banners are otherwise silently dead forever.
@@ -116,8 +120,13 @@ final class AppModel: ObservableObject {
             } catch {
                 outcome = .failure(error)
             }
+            // launchd introspection runs off the main thread with the
+            // status call — both are subprocess round-trips.
+            let installedNow = FileManager.default.fileExists(
+                atPath: daemonPlistPath(home: NSHomeDirectory()))
+            let enabledNow = DaemonControl.isEnabled()
             await MainActor.run { [weak self] in
-                self?.apply(outcome)
+                self?.apply(outcome, installedNow: installedNow, enabledNow: enabledNow)
             }
         }
     }
@@ -126,17 +135,23 @@ final class AppModel: ObservableObject {
     /// banners need a real "before", or launch-time states fire stale ones.
     private var hasSnapshot = false
 
-    private func apply(_ outcome: Result<[TaskView], Error>) {
+    private func apply(
+        _ outcome: Result<[TaskView], Error>,
+        installedNow: Bool, enabledNow: Bool
+    ) {
         let oldTasks = tasks
         let wasDaemonUp = daemonUp
+        self.daemonInstalled = installedNow
+        self.daemonEnabled = enabledNow
         defer {
             if hasSnapshot {
-                // daemonInstalled is re-read below before this defer runs,
-                // so a deliberate stop (registration removed) stays silent.
+                // Intent = installed AND enabled: a deliberate stop
+                // (disable) or an uninstall stays silent — only a daemon
+                // that *should* be running earns the down banner.
                 Notifier.shared.post(transitionEvents(
                     oldTasks: oldTasks, newTasks: tasks,
                     wasDaemonUp: wasDaemonUp, isDaemonUp: daemonUp,
-                    installedNow: daemonInstalled))
+                    intendedUp: daemonInstalled && daemonEnabled))
             }
             hasSnapshot = true
         }
@@ -155,8 +170,6 @@ final class AppModel: ObservableObject {
             }
             self.lastUpdated = Date()
         }
-        self.daemonInstalled = FileManager.default.fileExists(
-            atPath: daemonPlistPath(home: NSHomeDirectory()))
         // Keep an open history view live (running rows finish, new fires
         // append) on the same cadence as the status poll.
         if historyTask != nil {
@@ -198,6 +211,11 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: - Daemon lifecycle
+    //
+    // Two separate controls on two separate layers (user feedback: one
+    // switch for both meant uninstalling to pause). Install/uninstall is
+    // setup — plist registration, binary copy. The power switch is the run
+    // state — `task-clock start`/`stop`; stop never kills running tasks.
 
     func setDaemonInstalled(_ requested: Bool) {
         Task.detached(priority: .userInitiated) { [weak self] in
@@ -224,6 +242,36 @@ final class AppModel: ObservableObject {
                 }
             }
             // Give launchd a moment to start/stop the daemon, then re-poll.
+            try? await Task.sleep(for: .seconds(1))
+            await self?.refresh()
+        }
+    }
+
+    func setDaemonRunning(_ requested: Bool) {
+        Task.detached(priority: .userInitiated) { [weak self] in
+            var failure: String?
+            do {
+                if requested {
+                    try CLIRunner.startDaemon()
+                } else {
+                    try CLIRunner.stopDaemon()
+                }
+            } catch {
+                failure = error.localizedDescription
+            }
+            // Verify against the intent record, not the request — the
+            // switch must never silently pretend (launch-at-login rule).
+            let enabledNow = DaemonControl.isEnabled()
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.daemonEnabled = enabledNow
+                if let failure {
+                    self.lastError = failure
+                } else if let feedback = daemonRunFeedback(
+                    requested: requested, enabledNow: enabledNow) {
+                    self.lastError = feedback
+                }
+            }
             try? await Task.sleep(for: .seconds(1))
             await self?.refresh()
         }

@@ -320,19 +320,19 @@ final class TransitionEventTests: XCTestCase {
 
     func testDaemonDownFiresOnceOnTransitionWhileInstalled() {
         let down = transitionEvents(
-            oldTasks: [], newTasks: [], wasDaemonUp: true, isDaemonUp: false, installedNow: true)
+            oldTasks: [], newTasks: [], wasDaemonUp: true, isDaemonUp: false, intendedUp: true)
         XCTAssertEqual(down.map(\.id), ["daemon-down"])
         let stillDown = transitionEvents(
-            oldTasks: [], newTasks: [], wasDaemonUp: false, isDaemonUp: false, installedNow: true)
+            oldTasks: [], newTasks: [], wasDaemonUp: false, isDaemonUp: false, intendedUp: true)
         XCTAssertTrue(stillDown.isEmpty, "edge-triggered: no repeat while it stays down")
     }
 
     func testDeliberateStopStaysSilent() {
-        // The user flipped the power switch off (or ran `task-clock
-        // uninstall`): the registration is gone with the daemon — an
-        // intentional stop is not an incident.
+        // The user flipped the power switch off (`task-clock stop`
+        // disables the service; uninstall deregisters it) — either way the
+        // intent is gone, and an intentional stop is not an incident.
         let events = transitionEvents(
-            oldTasks: [], newTasks: [], wasDaemonUp: true, isDaemonUp: false, installedNow: false)
+            oldTasks: [], newTasks: [], wasDaemonUp: true, isDaemonUp: false, intendedUp: false)
         XCTAssertTrue(events.isEmpty, "self-inflicted stop must not notify")
     }
 
@@ -340,12 +340,12 @@ final class TransitionEventTests: XCTestCase {
         let before = running("a", overrun: 0)
         let entered = running("a", overrun: 90)
         let events = transitionEvents(
-            oldTasks: [before], newTasks: [entered], wasDaemonUp: true, isDaemonUp: true, installedNow: true)
+            oldTasks: [before], newTasks: [entered], wasDaemonUp: true, isDaemonUp: true, intendedUp: true)
         XCTAssertEqual(events.map(\.id), ["overrun-a"])
 
         let persisting = transitionEvents(
             oldTasks: [entered], newTasks: [running("a", overrun: 150)],
-            wasDaemonUp: true, isDaemonUp: true, installedNow: true)
+            wasDaemonUp: true, isDaemonUp: true, intendedUp: true)
         XCTAssertTrue(persisting.isEmpty)
     }
 
@@ -356,18 +356,18 @@ final class TransitionEventTests: XCTestCase {
         let before = TaskView(name: "a")
         let after = TaskView(name: "a", lastRun: failed)
         let events = transitionEvents(
-            oldTasks: [before], newTasks: [after], wasDaemonUp: true, isDaemonUp: true, installedNow: true)
+            oldTasks: [before], newTasks: [after], wasDaemonUp: true, isDaemonUp: true, intendedUp: true)
         XCTAssertEqual(events.map(\.id), ["failure-a-9"])
 
         // Same run seen again: no repeat. A later successful run: nothing.
         XCTAssertTrue(transitionEvents(
-            oldTasks: [after], newTasks: [after], wasDaemonUp: true, isDaemonUp: true, installedNow: true).isEmpty)
+            oldTasks: [after], newTasks: [after], wasDaemonUp: true, isDaemonUp: true, intendedUp: true).isEmpty)
         let ok = Run(id: 10, task: "a", scheduledFor: sched, startedAt: sched,
                      finishedAt: sched, exitCode: 0, outcome: "on_time")
         var recovered = after
         recovered.lastRun = ok
         XCTAssertTrue(transitionEvents(
-            oldTasks: [after], newTasks: [recovered], wasDaemonUp: true, isDaemonUp: true, installedNow: true).isEmpty)
+            oldTasks: [after], newTasks: [recovered], wasDaemonUp: true, isDaemonUp: true, intendedUp: true).isEmpty)
     }
 
     func testUnknownPreviousTaskStaysQuiet() {
@@ -375,7 +375,7 @@ final class TransitionEventTests: XCTestCase {
         // fire from its launch-time state.
         let events = transitionEvents(
             oldTasks: [], newTasks: [running("new", overrun: 300)],
-            wasDaemonUp: true, isDaemonUp: true, installedNow: true)
+            wasDaemonUp: true, isDaemonUp: true, intendedUp: true)
         XCTAssertTrue(events.isEmpty)
     }
 }
@@ -383,16 +383,55 @@ final class TransitionEventTests: XCTestCase {
 final class DaemonLampTests: XCTestCase {
     func testLampShowsActualStateIndependentOfSwitch() {
         // Running wins regardless of registration (foreground serve counts).
-        XCTAssertEqual(daemonLamp(installed: true, up: true), .running)
-        XCTAssertEqual(daemonLamp(installed: false, up: true), .running)
+        XCTAssertEqual(daemonLamp(installed: true, enabled: true, up: true), .running)
+        XCTAssertEqual(daemonLamp(installed: false, enabled: true, up: true), .running)
         // ON switch + dead daemon = the distinct "stalled" state.
-        XCTAssertEqual(daemonLamp(installed: true, up: false), .stalled)
-        XCTAssertEqual(daemonLamp(installed: false, up: false), .stopped)
+        XCTAssertEqual(daemonLamp(installed: true, enabled: true, up: false), .stalled)
+        // Deliberately stopped (disabled) is NOT stalled — no repair hint,
+        // no anomaly color; the user chose this state.
+        XCTAssertEqual(daemonLamp(installed: true, enabled: false, up: false), .stopped)
+        // Never set up at all: its own state, with its own prompt.
+        XCTAssertEqual(daemonLamp(installed: false, enabled: true, up: false), .notInstalled)
+        XCTAssertEqual(daemonLamp(installed: false, enabled: false, up: false), .notInstalled)
     }
 
     func testLampTextsAreDistinct() {
-        let texts = [DaemonLampState.running, .stalled, .stopped].map(daemonLampText)
-        XCTAssertEqual(Set(texts).count, 3)
+        let texts = [DaemonLampState.running, .stalled, .stopped, .notInstalled].map(daemonLampText)
+        XCTAssertEqual(Set(texts).count, 4)
+    }
+}
+
+final class DaemonRunStateTests: XCTestCase {
+    func testRunFeedbackSilentOnMatchSpeaksOnMismatch() {
+        XCTAssertNil(daemonRunFeedback(requested: true, enabledNow: true))
+        XCTAssertNil(daemonRunFeedback(requested: false, enabledNow: false))
+        XCTAssertNotNil(daemonRunFeedback(requested: true, enabledNow: false))
+        XCTAssertNotNil(daemonRunFeedback(requested: false, enabledNow: true))
+    }
+
+    func testEnabledParsesModernDisableDump() {
+        let dump = """
+        disabled services = {
+        \t"com.apple.example" => enabled
+        \t"jp.nlink.task-clock" => disabled
+        }
+        """
+        XCTAssertFalse(daemonEnabledInDump(dump))
+    }
+
+    func testEnabledParsesLegacyTrueMeansDisabled() {
+        XCTAssertFalse(daemonEnabledInDump("\t\"jp.nlink.task-clock\" => true\n"))
+    }
+
+    func testEnabledWhenAbsentOrExplicitlyEnabled() {
+        // Absent from the dump = launchd's default = enabled; an unreadable
+        // dump must not invent a deliberate stop (it would mute the
+        // daemon-down notification).
+        XCTAssertTrue(daemonEnabledInDump(""))
+        XCTAssertTrue(daemonEnabledInDump("disabled services = {\n}\n"))
+        XCTAssertTrue(daemonEnabledInDump("\t\"jp.nlink.task-clock\" => enabled\n"))
+        // A different label's disable is not ours.
+        XCTAssertTrue(daemonEnabledInDump("\t\"jp.nlink.task-clock-gui\" => disabled\n"))
     }
 }
 

@@ -16,11 +16,12 @@ public struct NotifyEvent: Equatable, Sendable {
 }
 
 /// Compare two snapshots and list what deserves a banner:
-/// - the daemon became unreachable **while still registered** (was up, now
-///   down, launch agent present — KeepAlive failing is an anomaly). A
-///   deliberate stop removes the registration (the GUI power switch or
-///   `task-clock uninstall` alike), and an intentional stop is not an
-///   incident — no banner (the lamp already shows gray "stopped")
+/// - the daemon became unreachable **while still meant to run** (was up,
+///   now down, launch agent installed AND enabled — KeepAlive failing is
+///   an anomaly). A deliberate stop clears the intent (`task-clock stop`
+///   disables, `uninstall` deregisters — the GUI switch and buttons go
+///   through those), and an intentional stop is not an incident — no
+///   banner (the lamp already shows gray "stopped")
 /// - a task entered the overrun state
 /// - a task's newest run finished with a failure (a new history row with a
 ///   non-zero exit)
@@ -31,12 +32,12 @@ public struct NotifyEvent: Equatable, Sendable {
 public func transitionEvents(
     oldTasks: [TaskView], newTasks: [TaskView],
     wasDaemonUp: Bool, isDaemonUp: Bool,
-    installedNow: Bool
+    intendedUp: Bool
 ) -> [NotifyEvent] {
     var events: [NotifyEvent] = []
 
     if wasDaemonUp && !isDaemonUp {
-        if installedNow {
+        if intendedUp {
             events.append(NotifyEvent(
                 id: "daemon-down",
                 title: "task-clock daemon unreachable",

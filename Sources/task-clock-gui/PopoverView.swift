@@ -4,6 +4,12 @@ import TaskClockGUICore
 struct PopoverView: View {
     @ObservedObject var model: AppModel
 
+    /// Uninstall interlock (same shape as run-now): first click arms,
+    /// second click within the window fires, the arm decays on its own. A
+    /// setup-destroying action must not ride on a single stray click.
+    @State private var uninstallArmed = false
+    @State private var uninstallDisarm: Task<Void, Never>?
+
     // Hosted in a resizable NSPanel: the window supplies the size, the
     // content fills it. No fixedSize, no width constant, no height caps —
     // those belonged to the MenuBarExtra era, where the window tracked the
@@ -30,13 +36,19 @@ struct PopoverView: View {
 
     /// Title line carries the daemon pilot lamp + power switch
     /// (load-spinner's header pattern): the lamp shows the actual state,
-    /// the switch holds the launch-agent intent, and an ON switch with an
-    /// orange lamp is precisely "registered but not answering" — Restart
-    /// is its repair path. No manual refresh button: the popover
-    /// auto-polls every 5 s and every action re-polls; the timestamp shows
-    /// the freshness instead.
+    /// the switch holds the *run intent* — start/stop only, never
+    /// install/uninstall (user feedback: one switch for both meant
+    /// uninstalling to pause; setup lives in the footer and the
+    /// not-installed prompt). An ON switch with an orange lamp is
+    /// precisely "should be running but isn't answering" — Restart is its
+    /// repair path. No manual refresh button: the popover auto-polls
+    /// every 5 s and every action re-polls; the timestamp shows the
+    /// freshness instead.
     private var header: some View {
-        let lamp = daemonLamp(installed: model.daemonInstalled, up: model.daemonUp)
+        let lamp = daemonLamp(
+            installed: model.daemonInstalled,
+            enabled: model.daemonEnabled,
+            up: model.daemonUp)
         return HStack(spacing: 6) {
             Text("task-clock").font(.headline)
             Circle()
@@ -46,15 +58,17 @@ struct PopoverView: View {
             Text(lampCaption(lamp))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Toggle("", isOn: Binding(
-                get: { model.daemonInstalled },
-                set: { model.setDaemonInstalled($0) }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.mini)
-            .labelsHidden()
-            .focusable(false)
-            .help("Power: register / remove the task-clock launch agent (starts and stops the daemon)")
+            if model.daemonInstalled {
+                Toggle("", isOn: Binding(
+                    get: { model.daemonEnabled },
+                    set: { model.setDaemonRunning($0) }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
+                .focusable(false)
+                .help("Power: start / stop the daemon. Stopping never kills running tasks; they are picked up again on start.")
+            }
             if lamp == .stalled {
                 Button("Restart") { model.setDaemonInstalled(true) }
                     .controlSize(.small)
@@ -76,6 +90,7 @@ struct PopoverView: View {
         case .running: return "running"
         case .stalled: return "not responding"
         case .stopped: return "stopped"
+        case .notInstalled: return "not installed"
         }
     }
 
@@ -83,7 +98,7 @@ struct PopoverView: View {
         switch state {
         case .running: return .green
         case .stalled: return .orange
-        case .stopped: return Color(nsColor: .tertiaryLabelColor)
+        case .stopped, .notInstalled: return Color(nsColor: .tertiaryLabelColor)
         }
     }
 
@@ -124,14 +139,32 @@ struct PopoverView: View {
         }
     }
 
+    @ViewBuilder
     private var daemonDown: some View {
-        Text(model.daemonInstalled
-            ? "The launch agent is registered but not answering — it may still be starting, or its config may be invalid (try Restart above; `task-clock validate` diagnoses config problems)."
-            : "task-clock runs as a background daemon. Flip the switch above to register its launch agent — it starts now and at every login.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
+        if !model.daemonInstalled {
+            // Setup lives here, not on the power switch: installing is a
+            // one-time action, deliberately separate from the daily
+            // start/stop control.
+            VStack(alignment: .leading, spacing: 8) {
+                Text("task-clock runs as a background daemon. Install its launch agent to get started — it runs now and at every login.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("Install daemon") { model.setDaemonInstalled(true) }
+                    .controlSize(.small)
+                    .focusable(false)
+                    .help("Register the launch agent (task-clock install)")
+            }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
+        } else {
+            Text(model.daemonEnabled
+                ? "The daemon should be running but is not answering — it may still be starting, or its config may be invalid (try Restart above; `task-clock validate` diagnoses config problems)."
+                : "The daemon is stopped. Tasks are not being scheduled; flip the switch above to start it. Any still-running task keeps running and is picked up again on start.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+        }
     }
 
     private var footer: some View {
@@ -154,17 +187,43 @@ struct PopoverView: View {
                     Spacer()
                 }
             }
-            if model.loginItemAvailable {
+            if model.loginItemAvailable || model.daemonInstalled {
                 HStack {
-                    Toggle("Launch at login", isOn: Binding(
-                        get: { model.launchAtLogin },
-                        set: { model.setLaunchAtLogin($0) }
-                    ))
-                    .toggleStyle(.checkbox)
-                    .font(.caption)
-                    .focusable(false)
-                    .help("Open this menu-bar app when you log in")
+                    if model.loginItemAvailable {
+                        Toggle("Launch at login", isOn: Binding(
+                            get: { model.launchAtLogin },
+                            set: { model.setLaunchAtLogin($0) }
+                        ))
+                        .toggleStyle(.checkbox)
+                        .font(.caption)
+                        .focusable(false)
+                        .help("Open this menu-bar app when you log in")
+                    }
                     Spacer()
+                    if model.daemonInstalled {
+                        // Setup-level counterpart of the Install button in
+                        // the not-installed prompt; deliberately down here,
+                        // away from the daily start/stop switch.
+                        Button(uninstallArmed ? "Click again to uninstall" : "Uninstall daemon…") {
+                            if uninstallArmed {
+                                uninstallDisarm?.cancel()
+                                uninstallArmed = false
+                                model.setDaemonInstalled(false)
+                            } else {
+                                uninstallArmed = true
+                                uninstallDisarm?.cancel()
+                                uninstallDisarm = Task { @MainActor in
+                                    try? await Task.sleep(for: .seconds(3))
+                                    if !Task.isCancelled { uninstallArmed = false }
+                                }
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                        .foregroundStyle(uninstallArmed ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                        .focusable(false)
+                        .help("Remove the launch agent (task-clock uninstall) — click twice")
+                    }
                 }
             }
             HStack {

@@ -138,4 +138,9 @@ enum CLIRunner {
     /// KeepAlive), so the GUI never sends the user to a terminal for it.
     static func installDaemon() throws { _ = try run(["install"]) }
     static func uninstallDaemon() throws { _ = try run(["uninstall"]) }
+
+    /// Run state, distinct from installation: stop never kills running
+    /// tasks (the daemon releases them; the next start adopts them back).
+    static func startDaemon() throws { _ = try run(["start"]) }
+    static func stopDaemon() throws { _ = try run(["stop"]) }
 }
