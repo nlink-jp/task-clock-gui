@@ -3,6 +3,16 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] - 2026-09-01
+
+### Fixed
+
+- Clicking outside the panel now closes it. applicationDidResignActive
+  alone cannot cover a .nonactivatingPanel (the app may never have been
+  active, so no resign event arrives); shown-only global/local mouse
+  monitors handle click-away, with the status button excluded so its
+  toggle keeps working
+
 ## [0.4.0] - 2026-09-01
 
 ### Added
