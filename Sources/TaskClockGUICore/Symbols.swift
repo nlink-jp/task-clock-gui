@@ -13,28 +13,26 @@ public enum Symbols {
     public static let barOverrun = "clock.badge.exclamationmark"
     public static let barDaemonDown = "clock.badge.questionmark"
 
-    // Task/run row indicators.
-    public static let indicatorDisabled = "minus.circle"
-    public static let indicatorPaused = "pause.circle"
-    public static let indicatorOverrun = "exclamationmark.circle.fill"
-    public static let indicatorRunning = "play.circle.fill"
-    public static let indicatorFailed = "xmark.circle.fill"
-    public static let indicatorMissed = "exclamationmark.triangle.fill"
-
-    // Controls and adornments.
+    // Controls and adornments. Row/run state indicators are deliberately
+    // NOT symbols: state is one visual idiom app-wide — a colored dot in
+    // the daemon lamp's color grammar (green/orange/red/gray), with the
+    // caption text carrying the reason. A symbol zoo next to dots was the
+    // main source of visual noise (user feedback).
     public static let runNow = "play.fill"
     public static let runNowArmed = "play.circle.fill"
     public static let revealLog = "doc.text.magnifyingglass"
     public static let historyChevron = "chevron.right"
     public static let historyBack = "chevron.backward"
     public static let errorLabel = "exclamationmark.triangle"
+    public static let reload = "arrow.clockwise"
+    public static let installDaemon = "arrow.down.circle"
+    public static let uninstallDaemon = "trash"
+    public static let quitApp = "power"
 
     /// The complete inventory for the resolution test.
     public static let all: [String] = [
         barHealthy, barRunning, barOverrun, barDaemonDown,
-        indicatorDisabled, indicatorPaused, indicatorOverrun,
-        indicatorRunning, indicatorFailed, indicatorMissed,
         runNow, runNowArmed, revealLog, historyChevron, historyBack,
-        errorLabel,
+        errorLabel, reload, installDaemon, uninstallDaemon, quitApp,
     ]
 }

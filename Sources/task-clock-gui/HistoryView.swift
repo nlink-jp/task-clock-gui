@@ -49,15 +49,24 @@ struct HistoryView: View {
             .focusable(false)
             .help("Back to the task list")
             Text(taskName).font(.system(.body, weight: .medium))
-            Text("run history")
+            // The trigger spec's home (it left the task rows): static
+            // config belongs next to the record it produced.
+            Text(triggerText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
             Text("last \(model.historyRuns.count)")
-                .font(.caption2)
+                .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+    }
+
+    private var triggerText: String {
+        guard let task = model.tasks.first(where: { $0.name == taskName }) else {
+            return "run history"
+        }
+        return task.watermark.isEmpty ? task.cron : "success + \(task.watermark)"
     }
 }
 
@@ -68,7 +77,6 @@ struct HistoryRow: View {
         let text = runRowText(run)
         HStack(spacing: 8) {
             IndicatorIcon(indicator: runRowIndicator(for: run))
-                .scaleEffect(0.8)
             Text(text.clock)
                 .font(.system(.caption, design: .monospaced))
             Text(text.startDelay)

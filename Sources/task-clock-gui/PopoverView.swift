@@ -1,6 +1,14 @@
 import SwiftUI
 import TaskClockGUICore
 
+// Design system (user feedback: piecemeal additions had made the panel
+// visually noisy). Three text levels only: headline (title) / body (task
+// names) / caption in secondary gray (all meta). Color marks STATE only,
+// and state has ONE idiom — a small dot in the daemon lamp's color
+// grammar (green/orange/red/gray); the caption text carries the reason.
+// Switches align on the right edge, header and rows alike. Text buttons
+// are uniformly small. Rare setup actions live in the gear menu, not in
+// the always-visible footer.
 struct PopoverView: View {
     @ObservedObject var model: AppModel
 
@@ -51,38 +59,40 @@ struct PopoverView: View {
             up: model.daemonUp)
         return HStack(spacing: 6) {
             Text("task-clock").font(.headline)
+            // Freshness lives in the tooltip, not as always-on text: the
+            // panel self-polls every 5 s, so a visible timestamp was
+            // process detail masquerading as information.
             Circle()
                 .fill(lampColor(lamp))
-                .frame(width: 7, height: 7)
-                .help(daemonLampText(lamp))
+                .frame(width: 8, height: 8)
+                .help(lampHelp(lamp))
             Text(lampCaption(lamp))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if model.daemonInstalled {
-                Toggle("", isOn: Binding(
-                    get: { model.daemonEnabled },
-                    set: { model.setDaemonRunning($0) }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .labelsHidden()
-                .focusable(false)
-                .help("Power: start / stop the daemon. Stopping never kills running tasks; they are picked up again on start.")
-            }
-            if lamp == .stalled {
-                Button("Restart") { model.setDaemonInstalled(true) }
-                    .controlSize(.small)
-                    .focusable(false)
-                    .help("Re-register the launch agent (task-clock install)")
-            }
             Spacer()
-            if let updated = model.lastUpdated {
-                Text("as of \(updated, style: .time)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            // Right edge = the switch column, shared with the task rows.
+            // Always rendered and always live — the switch IS the run
+            // intent, and on a fresh machine turning it on simply
+            // includes the setup (install registers and starts). No
+            // separate Install button, no popping elements.
+            Toggle("", isOn: Binding(
+                get: { model.daemonEnabled && model.daemonInstalled },
+                set: { model.setDaemonRunning($0) }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .labelsHidden()
+            .focusable(false)
+            .help(model.daemonInstalled
+                ? "Power: start / stop the daemon. Stopping never kills running tasks; they are picked up again on start."
+                : "Power: installs the launch agent and starts the daemon")
         }
         .padding(EdgeInsets(top: 10, leading: 12, bottom: 8, trailing: 12))
+    }
+
+    private func lampHelp(_ state: DaemonLampState) -> String {
+        guard let updated = model.lastUpdated else { return daemonLampText(state) }
+        return "\(daemonLampText(state)) — updated \(updated.formatted(date: .omitted, time: .standard))"
     }
 
     private func lampCaption(_ state: DaemonLampState) -> String {
@@ -142,24 +152,27 @@ struct PopoverView: View {
     @ViewBuilder
     private var daemonDown: some View {
         if !model.daemonInstalled {
-            // Setup lives here, not on the power switch: installing is a
-            // one-time action, deliberately separate from the daily
-            // start/stop control.
+            Text("task-clock runs as a background daemon. Flip the switch above to install its launch agent and start it — it runs now and at every login.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+        } else if model.daemonEnabled {
+            // Stalled. Restart lives HERE, not in the header: a button
+            // popping into the title row made the layout twitch.
             VStack(alignment: .leading, spacing: 8) {
-                Text("task-clock runs as a background daemon. Install its launch agent to get started — it runs now and at every login.")
+                Text("The daemon should be running but is not answering — it may still be starting, or its config may be invalid (`task-clock validate` diagnoses config problems).")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Button("Install daemon") { model.setDaemonInstalled(true) }
+                Button("Restart") { model.setDaemonInstalled(true) }
                     .controlSize(.small)
                     .focusable(false)
-                    .help("Register the launch agent (task-clock install)")
+                    .help("Re-register the launch agent (task-clock install)")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
         } else {
-            Text(model.daemonEnabled
-                ? "The daemon should be running but is not answering — it may still be starting, or its config may be invalid (try Restart above; `task-clock validate` diagnoses config problems)."
-                : "The daemon is stopped. Tasks are not being scheduled; flip the switch above to start it. Any still-running task keeps running and is picked up again on start.")
+            Text("The daemon is stopped. Tasks are not being scheduled; flip the switch above to start it. Any still-running task keeps running and is picked up again on start.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -187,95 +200,125 @@ struct PopoverView: View {
                     Spacer()
                 }
             }
-            if model.loginItemAvailable || model.daemonInstalled {
-                HStack {
-                    if model.loginItemAvailable {
-                        Toggle("Launch at login", isOn: Binding(
-                            get: { model.launchAtLogin },
-                            set: { model.setLaunchAtLogin($0) }
-                        ))
-                        .toggleStyle(.checkbox)
-                        .font(.caption)
-                        .focusable(false)
-                        .help("Open this menu-bar app when you log in")
-                    }
-                    Spacer()
-                    if model.daemonInstalled {
-                        // Setup-level counterpart of the Install button in
-                        // the not-installed prompt; deliberately down here,
-                        // away from the daily start/stop switch.
-                        Button(uninstallArmed ? "Click again to uninstall" : "Uninstall daemon…") {
-                            if uninstallArmed {
-                                uninstallDisarm?.cancel()
-                                uninstallArmed = false
-                                model.setDaemonInstalled(false)
-                            } else {
-                                uninstallArmed = true
-                                uninstallDisarm?.cancel()
-                                uninstallDisarm = Task { @MainActor in
-                                    try? await Task.sleep(for: .seconds(3))
-                                    if !Task.isCancelled { uninstallArmed = false }
-                                }
-                            }
-                        }
-                        .buttonStyle(.borderless)
-                        .font(.caption)
-                        .foregroundStyle(uninstallArmed ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
-                        .focusable(false)
-                        .help("Remove the launch agent (task-clock uninstall) — click twice")
-                    }
-                }
-            }
-            HStack {
+            HStack(spacing: 24) {
                 // Never disabled on !daemonUp: "down" also covers "starting
                 // right now", and a reload against a truly down daemon just
                 // reports in the same view (ambiguous-status rule).
-                Button("Reload task definitions") { model.reload() }
+                Button {
+                    model.reload()
+                } label: {
+                    Label("Reload tasks", systemImage: Symbols.reload)
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .focusable(false)
+                .help("Tell the daemon to re-read its tasks.d config files (task-clock reload)")
+                daemonSetupButton
+                Spacer()
+            }
+            HStack {
+                if model.loginItemAvailable {
+                    Toggle("Launch at login", isOn: Binding(
+                        get: { model.launchAtLogin },
+                        set: { model.setLaunchAtLogin($0) }
+                    ))
+                    .toggleStyle(.checkbox)
+                    .font(.caption)
                     .focusable(false)
-                    .help("Tell the daemon to re-read its tasks.d config files (task-clock reload)")
+                    .help("Open this menu-bar app when you log in")
+                }
                 Spacer()
                 // appVersion already carries the v prefix (git describe) —
                 // adding another produced "vv0.1.0". Selectable so a bug
                 // report can paste the exact build.
                 Text(appVersion)
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
-                Button("Quit") { NSApplication.shared.terminate(nil) }
-                    .focusable(false)
+                // Quitting the app never touches the daemon, so the power
+                // button needs no interlock or confirmation.
+                Button {
+                    NSApplication.shared.terminate(nil)
+                } label: {
+                    Image(systemName: Symbols.quitApp)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .focusable(false)
+                .help("Quit TaskClock — the daemon keeps running")
             }
         }
         .padding(EdgeInsets(top: 8, leading: 12, bottom: 10, trailing: 12))
     }
+
+    /// Setup control beside the power switch: installs plainly;
+    /// uninstalling — the destructive direction — takes the
+    /// run-now-style two-click interlock (armed = orange, decays on its
+    /// own).
+    @ViewBuilder
+    private var daemonSetupButton: some View {
+        if model.daemonInstalled {
+            Button {
+                if uninstallArmed {
+                    uninstallDisarm?.cancel()
+                    uninstallArmed = false
+                    model.setDaemonInstalled(false)
+                } else {
+                    uninstallArmed = true
+                    uninstallDisarm?.cancel()
+                    uninstallDisarm = Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(3))
+                        if !Task.isCancelled { uninstallArmed = false }
+                    }
+                }
+            } label: {
+                // Armed = color only; the label stays put (user feedback:
+                // changing text was the noisier signal).
+                Label("Uninstall", systemImage: Symbols.uninstallDaemon)
+                    .font(.caption)
+                    .foregroundStyle(uninstallArmed ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+            }
+            .buttonStyle(.borderless)
+            .focusable(false)
+            .help(uninstallArmed
+                ? "Click again to uninstall the daemon"
+                : "Uninstall the daemon's launch agent — click twice; a running task is not killed")
+        } else {
+            Button {
+                model.setDaemonInstalled(true)
+            } label: {
+                Label("Install", systemImage: Symbols.installDaemon)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .focusable(false)
+            .help("Install and start the daemon — same as flipping the switch on")
+        }
+    }
 }
 
-/// Shared indicator glyphs (task rows and history rows): the quiet normal
-/// state is a small pilot-lamp dot, not a full-size filled symbol — solid
-/// fills read much heavier than the outline glyphs at the same point size.
+/// Shared state indicator (task rows and history rows): ONE idiom
+/// app-wide — a small dot in the daemon lamp's color grammar. The caption
+/// text next to it carries the reason; a per-state symbol zoo carried the
+/// same information twice and read as noise (user feedback).
 struct IndicatorIcon: View {
     let indicator: RowIndicator
 
     var body: some View {
-        Group {
-            switch indicator {
-            case .disabled:
-                Image(systemName: Symbols.indicatorDisabled).foregroundStyle(.secondary)
-            case .paused:
-                Image(systemName: Symbols.indicatorPaused).foregroundStyle(.secondary)
-            case .overrun:
-                Image(systemName: Symbols.indicatorOverrun).foregroundStyle(.orange)
-            case .running:
-                Image(systemName: Symbols.indicatorRunning).foregroundStyle(.green)
-            case .failed:
-                Image(systemName: Symbols.indicatorFailed).foregroundStyle(.red)
-            case .missedLast:
-                Image(systemName: Symbols.indicatorMissed).foregroundStyle(.orange)
-            case .healthy:
-                Circle().fill(.green).frame(width: 10, height: 10)
-            }
+        Circle()
+            .fill(dotColor)
+            .frame(width: 8, height: 8)
+            .frame(width: 16, height: 16)
+    }
+
+    private var dotColor: Color {
+        switch indicator {
+        case .disabled, .paused: return Color(nsColor: .tertiaryLabelColor)
+        case .overrun, .missedLast: return .orange
+        case .failed: return .red
+        case .running, .healthy: return .green
         }
-        .font(.title3)
-        .frame(width: 22, height: 22)
     }
 }
 
@@ -297,11 +340,11 @@ struct TaskRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(task.name).font(.system(.body, weight: .medium))
-                    Text(text.trigger)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    // The trigger spec (cron/watermark) is static config —
+                    // it moved to the history header; "next:" below is
+                    // what the schedule means for the user.
                     Image(systemName: Symbols.historyChevron)
-                        .font(.caption2)
+                        .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
                 Text("\(text.state) · next: \(text.nextRun) · last: \(text.lastRun)")
@@ -352,8 +395,11 @@ struct TaskRow: View {
                     }
                 }
             } label: {
+                // Fixed frame: the armed glyph is wider than the idle one,
+                // and a button that changes width nudges the whole row.
                 Image(systemName: runArmed ? Symbols.runNowArmed : Symbols.runNow)
                     .foregroundStyle(runArmed ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary))
+                    .frame(width: 18)
             }
             .buttonStyle(.borderless)
             .focusable(false)
@@ -361,16 +407,8 @@ struct TaskRow: View {
                 ? "Click again to run now"
                 : "Run now — click twice (interlock; works even while off)")
         }
-        if let log = task.lastRun?.logPath, !log.isEmpty {
-            Button {
-                NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: log)])
-            } label: {
-                Image(systemName: Symbols.revealLog)
-            }
-            .buttonStyle(.borderless)
-            .focusable(false)
-            .help("Reveal the last run's log in Finder")
-        }
+        // No reveal-log button here: every run's log is one click away in
+        // the history view the row opens — the duplicate icon was noise.
         if task.enabled {
             // The per-task on/off switch = pause/resume, which the daemon
             // persists across restarts. The config's `enabled = false` is a

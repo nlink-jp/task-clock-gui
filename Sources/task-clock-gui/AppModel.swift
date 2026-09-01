@@ -267,26 +267,42 @@ final class AppModel: ObservableObject {
     func setDaemonRunning(_ requested: Bool) {
         enqueueLifecycle { [weak self] in
             var failure: String?
+            // Read inside the chained body (not captured UI state): a
+            // queued earlier action may have changed the installation.
+            let installedBefore = FileManager.default.fileExists(
+                atPath: daemonPlistPath(home: NSHomeDirectory()))
             do {
-                if requested {
+                if !requested {
+                    try CLIRunner.stopDaemon()
+                } else if installedBefore {
                     try CLIRunner.startDaemon()
                 } else {
-                    try CLIRunner.stopDaemon()
+                    // The switch holds the run intent; on a fresh machine
+                    // "make it run" simply includes the setup — install
+                    // registers AND starts (user feedback: a separate
+                    // Install button was one control too many).
+                    try CLIRunner.installDaemon()
                 }
             } catch {
                 failure = error.localizedDescription
             }
-            // Verify against the intent record, not the request — the
+            // Verify against the observable state, not the request — the
             // switch must never silently pretend (launch-at-login rule).
+            let installedNow = FileManager.default.fileExists(
+                atPath: daemonPlistPath(home: NSHomeDirectory()))
             let enabledNow = DaemonControl.isEnabled()
             await MainActor.run { [weak self] in
                 guard let self else { return }
+                self.daemonInstalled = installedNow
                 self.daemonEnabled = enabledNow
                 if let failure {
                     self.lastError = failure
-                } else if let feedback = daemonRunFeedback(
-                    requested: requested, enabledNow: enabledNow) {
-                    self.lastError = feedback
+                } else if requested && !installedBefore {
+                    self.lastError = daemonInstallFeedback(
+                        requested: true, installedNow: installedNow)
+                } else {
+                    self.lastError = daemonRunFeedback(
+                        requested: requested, enabledNow: enabledNow)
                 }
             }
             try? await Task.sleep(for: .seconds(1))
