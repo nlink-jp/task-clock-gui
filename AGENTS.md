@@ -2,8 +2,8 @@
 
 ## Summary
 
-task-clock デーモンの macOS メニューバーフロントエンド (SwiftUI
-MenuBarExtra)。同梱の署名済み task-clock CLI を `--json` で実行して状態を
+task-clock デーモンの macOS メニューバーフロントエンド (AppKit の
+NSStatusItem + リサイズ可能 NSPanel が殻、中身は SwiftUI)。同梱の署名済み task-clock CLI を `--json` で実行して状態を
 表示し、trigger / pause / resume / reload を提供する。正常時は無音、超過
 とデーモン停止のみメニューバーで発言する。設計の正は
 `docs/ja/task-clock-gui-rfp.ja.md`。
@@ -34,7 +34,8 @@ Sources/TaskClockGUICore/    # 純関数層（テスト対象）
   BinaryResolution.swift     #   CLI バイナリ解決順（bundled が信頼アンカー）
 Sources/task-clock-gui/      # UI 層（薄く保つ）
   Entry.swift                #   @main enum Main: version/help → ガード → App.main()
-  App.swift                  #   MenuBarExtra(.window) + 起動フック（TCC 要求もここ）
+  App.swift                  #   NSApplicationDelegateAdaptor + placeholder Settings scene
+  AppController.swift        #   NSStatusItem + リサイズ可能 NSPanel（起動フック・TCC 要求・ボタン描画）
   AppModel.swift             #   ポーリング（30s/5s）+ App Nap opt-out + アクション + 遷移通知
   CLIRunner.swift            #   CLI 実行 + stderr 分類（daemonDown は独立状態）
   LoginItem.swift            #   SMAppService（曖昧 status は「未登録」に畳む）
@@ -51,10 +52,13 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   プロンプトの有無を必ず確認。TCC 要求は AppStart.once（起動時）にある。
 - daemonInstalled（plist 存在）と daemonUp（API 応答）は別状態。plist パスは
   Core の `daemonPlistPath`（CLI の label `jp.nlink.task-clock` が契約）。
-- パネルサイズはリサイズグリップ駆動（@AppStorage 永続; MenuBarExtra は
-  ネイティブのリサイズ枠を持てないため、グリップが状態を変えウィンドウが
-  コンテンツ ideal サイズ追従で付いてくる方式）。clampWidth/clampListHeight
-  と可変 cap は Core でテスト済み。
+- **殻は AppKit**（AppController: NSStatusItem + NSPanel）— MenuBarExtra は
+  ユーザーリサイズ不可のため移行済み（グリップ方式は違和感で廃案）。NSPanel の
+  鉄則: styleMask に `.nonactivatingPanel` 必須（無いと起動直後~30s 開かない）、
+  `hidesOnDeactivate` 禁止（isVisible が腐りトグルが空振り）、click-away は
+  applicationDidResignActive で明示 orderOut + 表示直後 0.5s の grace、
+  setFrameAutosaveName + 表示時に visibleFrame へクランプ。移植元は
+  instant-translate の AppController。
 - タスク行の HStack: テキスト側は `frame(maxWidth:.infinity)` + truncate、
   コントロール側は `fixedSize()+layoutPriority(1)` — 長い状態文でボタンが
   押し出される回帰を防ぐ組。片方だけでは効かない。
@@ -68,7 +72,6 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
 - CLI の stderr 文言（"daemon is not running" 等）に `CLIRunner.classify` が
   依存。CLI 側の文言変更時はここも追随（テストが fixture で守る）。
 - `history` の CLI フラグは位置引数の**前**（stdlib flag: `history -limit 5 <task>`）。
-- MenuBarExtra ラベルの `.onAppear` が唯一の起動フック（AppStart.once）。
 - デーモン停止 (`CLIError.daemonDown`) はエラーバナーにしない — 独立した
   表示状態（menu bar `clock.badge.questionmark` + ポップオーバー案内文）。
 - 詳細な罠一覧は CLAUDE.md の invariants を参照。

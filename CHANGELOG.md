@@ -7,9 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 
 ### Added
 
-- Resizable panel: a bottom-right grip drags the width and list height
-  (persisted across launches; MenuBarExtra windows have no native resize
-  frame), double-click resets to the defaults
+- The panel is now natively resizable: drag any edge or corner, and the
+  size is remembered. The menu-bar shell moved from `MenuBarExtra` to
+  AppKit (`NSStatusItem` + a resizable `NSPanel`), the org's proven shape
+  for exactly this — an interim grip-based resize was scrapped as unusable
 
 ## [0.3.0] - 2026-09-01
 

@@ -241,37 +241,6 @@ final class HistoryRowTests: XCTestCase {
     }
 }
 
-final class PopoverLayoutTests: XCTestCase {
-    func testHeightFloorAndCap() {
-        XCTAssertEqual(PopoverLayout.contentHeight(rows: 0), PopoverLayout.minHeight)
-        XCTAssertEqual(PopoverLayout.contentHeight(rows: 2), 2 * PopoverLayout.rowHeight)
-        XCTAssertEqual(PopoverLayout.contentHeight(rows: 100), PopoverLayout.maxHeight)
-        XCTAssertGreaterThan(PopoverLayout.contentHeight(rows: 1), 0, "must never collapse to zero")
-    }
-
-    func testHistoryHeightFloorAndCap() {
-        XCTAssertEqual(PopoverLayout.historyContentHeight(rows: 0), PopoverLayout.minHeight)
-        XCTAssertEqual(PopoverLayout.historyContentHeight(rows: 5), 5 * PopoverLayout.historyRowHeight)
-        XCTAssertEqual(PopoverLayout.historyContentHeight(rows: 1000), PopoverLayout.maxHeight)
-    }
-
-    // The resize grip drives a user cap; the floor must survive a hostile
-    // cap and the clamps must bound the drag.
-    func testUserResizableCap() {
-        XCTAssertEqual(PopoverLayout.contentHeight(rows: 100, cap: 600), 600)
-        XCTAssertEqual(PopoverLayout.contentHeight(rows: 2, cap: 600), 2 * PopoverLayout.rowHeight)
-        XCTAssertEqual(PopoverLayout.contentHeight(rows: 100, cap: 0), PopoverLayout.minHeight,
-                       "a cap below the floor must not collapse the list")
-        XCTAssertEqual(PopoverLayout.historyContentHeight(rows: 100, cap: 500), 500)
-
-        XCTAssertEqual(PopoverLayout.clampWidth(100), PopoverLayout.minWidth)
-        XCTAssertEqual(PopoverLayout.clampWidth(10_000), PopoverLayout.maxWidth)
-        XCTAssertEqual(PopoverLayout.clampWidth(400), 400)
-        XCTAssertEqual(PopoverLayout.clampListHeight(0), PopoverLayout.minListHeight)
-        XCTAssertEqual(PopoverLayout.clampListHeight(10_000), PopoverLayout.maxListHeight)
-    }
-}
-
 final class SingleInstanceTests: XCTestCase {
     func testBareBinaryProceeds() {
         XCTAssertEqual(singleInstanceDecision(bundleID: nil, ownPID: 1, instancePIDs: []), .proceed)

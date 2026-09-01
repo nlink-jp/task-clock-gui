@@ -14,12 +14,11 @@ Org rules: nlink-jp/.github `CONVENTIONS.md`。設計の正は
 - **メニューバーは既定で無音。** 発言するのは overrun とデーモン到達不能のみ。
   「不明」を「正常」にも「エラー」にも畳まない。
 - **曖昧状態でコントロールを disable しない** — 実行して結果を同じ画面に表示。
-- **MenuBarExtra の罠**: ScrollView には `PopoverLayout.contentHeight` の
-  具体的高さ（ideal 高さ 0 で潰れる）、ルートに
-  `.fixedSize(horizontal: false, vertical: true)`。
+- **殻は AppKit の NSStatusItem + リサイズ可能 NSPanel**（AppController）。
+  MenuBarExtra に戻さない — ユーザーリサイズ不可。NSPanel は
+  `.nonactivatingPanel` 必須・`hidesOnDeactivate` 禁止（AGENTS.md Gotchas）。
 - **単一インスタンス二層ガード**: Info.plist の LSMultipleInstancesProhibited +
-  `enum Main` での実行時判定（@main struct App にしない — @StateObject が
-  ガードより先に走る）。
+  `enum Main` での実行時判定。
 - **App Nap opt-out**（AppModel.start の beginActivity）を外さない — 外すと
   ポーリングが凍って表示が黙って古くなる。
 - ポップオーバーの中身はプログラムから検証できない — リリース前に実機で

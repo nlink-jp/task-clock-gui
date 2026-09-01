@@ -4,19 +4,16 @@ import TaskClockGUICore
 struct PopoverView: View {
     @ObservedObject var model: AppModel
 
-    // Panel size, user-adjustable via the resize grip and persisted.
-    // MenuBarExtra windows have no native resize frame — the window tracks
-    // its content's ideal size, so dragging the grip mutates these and the
-    // window follows.
-    @AppStorage("panelWidth") private var panelWidth = Double(PopoverLayout.defaultWidth)
-    @AppStorage("listMaxHeight") private var listMaxHeight = Double(PopoverLayout.maxHeight)
-    @State private var dragStart: (width: Double, height: Double)?
-
+    // Hosted in a resizable NSPanel: the window supplies the size, the
+    // content fills it. No fixedSize, no width constant, no height caps —
+    // those belonged to the MenuBarExtra era, where the window tracked the
+    // content's ideal size.
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
             Divider()
             content
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             if let error = model.lastError {
                 Divider()
                 Label(error, systemImage: "exclamationmark.triangle")
@@ -28,41 +25,7 @@ struct PopoverView: View {
             Divider()
             footer
         }
-        .frame(width: panelWidth)
-        // The popover sizes itself to the content's ideal height; make the
-        // VStack claim what it needs instead of being squeezed.
-        .fixedSize(horizontal: false, vertical: true)
-        .overlay(alignment: .bottomTrailing) { resizeGrip }
-    }
-
-    var listHeightCap: CGFloat { CGFloat(listMaxHeight) }
-
-    /// Bottom-right resize grip: drag to resize width and list height,
-    /// double-click to restore the defaults.
-    private var resizeGrip: some View {
-        Image(systemName: "arrow.up.backward.and.arrow.down.forward")
-            .font(.system(size: 8, weight: .bold))
-            .foregroundStyle(.tertiary)
-            .rotationEffect(.degrees(90)) // point along the ↘ diagonal
-            .padding(4)
-            .contentShape(Rectangle())
-            .help("Drag to resize — double-click to reset")
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .onChanged { value in
-                        let start = dragStart ?? (panelWidth, listMaxHeight)
-                        dragStart = start
-                        panelWidth = Double(PopoverLayout.clampWidth(
-                            CGFloat(start.width) + value.translation.width))
-                        listMaxHeight = Double(PopoverLayout.clampListHeight(
-                            CGFloat(start.height) + value.translation.height))
-                    }
-                    .onEnded { _ in dragStart = nil }
-            )
-            .onTapGesture(count: 2) {
-                panelWidth = Double(PopoverLayout.defaultWidth)
-                listMaxHeight = Double(PopoverLayout.maxHeight)
-            }
+        .frame(minWidth: 340, maxWidth: .infinity, minHeight: 280, maxHeight: .infinity)
     }
 
     /// Title line carries the daemon pilot lamp + power switch
@@ -125,7 +88,7 @@ struct PopoverView: View {
     @ViewBuilder
     private var content: some View {
         if let task = model.historyTask {
-            HistoryView(model: model, taskName: task, heightCap: listHeightCap)
+            HistoryView(model: model, taskName: task)
         } else if !model.daemonUp {
             daemonDown
         } else if model.tasks.isEmpty {
@@ -144,9 +107,6 @@ struct PopoverView: View {
             // every second locally via TimelineView, or the text freezes
             // between polls and jumps. Once a fire time passes and the poll
             // has not caught up yet, the row honestly reads "due now".
-            //
-            // ScrollView has ideal height 0 in a menu-bar popover — give it
-            // the concrete height PopoverLayout computes, or it collapses.
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 ScrollView {
                     VStack(spacing: 0) {
@@ -158,8 +118,6 @@ struct PopoverView: View {
                         }
                     }
                 }
-                .frame(height: PopoverLayout.contentHeight(
-                    rows: model.tasks.count, cap: listHeightCap))
             }
         }
     }

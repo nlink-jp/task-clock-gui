@@ -8,7 +8,6 @@ import TaskClockGUICore
 struct HistoryView: View {
     @ObservedObject var model: AppModel
     let taskName: String
-    let heightCap: CGFloat
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -27,8 +26,6 @@ struct HistoryView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 20)
             } else {
-                // Explicit height, same as the task list: a ScrollView in a
-                // menu-bar popover collapses without one.
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(model.historyRuns, id: \.id) { run in
@@ -36,10 +33,9 @@ struct HistoryView: View {
                         }
                     }
                 }
-                .frame(height: PopoverLayout.historyContentHeight(
-                    rows: model.historyRuns.count, cap: heightCap))
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var header: some View {
