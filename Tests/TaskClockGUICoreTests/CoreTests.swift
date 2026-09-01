@@ -370,6 +370,48 @@ final class TransitionEventTests: XCTestCase {
             oldTasks: [after], newTasks: [recovered], wasDaemonUp: true, isDaemonUp: true, intendedUp: true).isEmpty)
     }
 
+    func testAdoptedRunReadsUnmanaged() {
+        // The stop/start power switch creates adopted runs — the row must
+        // say so, because their exit status will be unknowable.
+        let t = TaskView(
+            name: "a",
+            running: RunningStatus(scheduledFor: Date(), startedAt: Date(), elapsedSeconds: 60),
+            releasedUnmanaged: true)
+        XCTAssertTrue(taskRowText(t, now: Date()).state.contains("running (unmanaged)"))
+    }
+
+    func testFailureFiresWhenTheSameRunTransitionsOpenToFailed() {
+        // Any run longer than one poll interval is seen OPEN first, then
+        // finished under the SAME id — a new-id check alone silences all
+        // of them (verification finding).
+        let sched = Date()
+        let open = Run(id: 9, task: "a", scheduledFor: sched, startedAt: sched,
+                       finishedAt: nil, exitCode: nil, outcome: "on_time")
+        let failed = Run(id: 9, task: "a", scheduledFor: sched, startedAt: sched,
+                         finishedAt: sched, exitCode: 3, outcome: "on_time")
+        let events = transitionEvents(
+            oldTasks: [TaskView(name: "a", lastRun: open)],
+            newTasks: [TaskView(name: "a", lastRun: failed)],
+            wasDaemonUp: true, isDaemonUp: true, intendedUp: true)
+        XCTAssertEqual(events.map(\.id), ["failure-a-9"])
+    }
+
+    func testUnknownExitIsNotAFailure() {
+        // An adopted run's finalization has NO exit code (unknowable ≠
+        // failed) — it must never raise the failure banner.
+        let sched = Date()
+        let open = Run(id: 9, task: "a", scheduledFor: sched, startedAt: sched,
+                       finishedAt: nil, exitCode: nil, outcome: "on_time")
+        let unknown = Run(id: 9, task: "a", scheduledFor: sched, startedAt: sched,
+                          finishedAt: sched, exitCode: nil, outcome: "on_time",
+                          error: "released run ended (exit status unknown)")
+        let events = transitionEvents(
+            oldTasks: [TaskView(name: "a", lastRun: open)],
+            newTasks: [TaskView(name: "a", lastRun: unknown)],
+            wasDaemonUp: true, isDaemonUp: true, intendedUp: true)
+        XCTAssertTrue(events.isEmpty, "unknown exit notified as failure")
+    }
+
     func testUnknownPreviousTaskStaysQuiet() {
         // A task first seen in this snapshot (fresh launch, reload) must not
         // fire from its launch-time state.

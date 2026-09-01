@@ -110,11 +110,16 @@ func stateText(_ task: TaskView, now: Date) -> String {
     case .idle: return "idle"
     case .running:
         let elapsed = task.running.map { now.timeIntervalSince($0.startedAt) } ?? 0
-        return "running \(compactDuration(max(0, elapsed)))"
+        // "(unmanaged)" = adopted from a previous daemon: still alive and
+        // policy-managed, but its exit status will be unknowable — the
+        // exact population the stop/start power switch creates.
+        let word = task.releasedUnmanaged ? "running (unmanaged)" : "running"
+        return "\(word) \(compactDuration(max(0, elapsed)))"
     case .overrun:
         let elapsed = task.running.map { now.timeIntervalSince($0.startedAt) } ?? 0
+        let word = task.releasedUnmanaged ? "running (unmanaged)" : "running"
         // Overrun is an explicit state word, never a negative countdown.
-        return "running \(compactDuration(max(0, elapsed))) — overrun \(compactDuration(task.overrunSeconds))"
+        return "\(word) \(compactDuration(max(0, elapsed))) — overrun \(compactDuration(task.overrunSeconds))"
     }
 }
 

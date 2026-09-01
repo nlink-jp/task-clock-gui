@@ -57,8 +57,12 @@ public func transitionEvents(
                 body: "Running past its fire by \(compactDuration(task.overrunSeconds)); the next run waits."))
         }
 
-        if let run = task.lastRun, let exit = run.exitCode, exit != 0,
-           run.id != previous.lastRun?.id {
+        // "Newly failed" must also cover the run the previous poll saw
+        // STILL OPEN under the same id (any run longer than one poll
+        // interval) — a new-id check alone silences exactly those.
+        if let run = task.lastRun, run.finishedAt != nil,
+           let exit = run.exitCode, exit != 0,
+           run.id != previous.lastRun?.id || previous.lastRun?.finishedAt == nil {
             events.append(NotifyEvent(
                 id: "failure-\(task.name)-\(run.id)",
                 title: "\(task.name) failed",

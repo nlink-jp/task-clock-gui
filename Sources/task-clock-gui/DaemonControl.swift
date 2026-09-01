@@ -16,7 +16,9 @@ enum DaemonControl {
         proc.arguments = ["print-disabled", "gui/\(getuid())"]
         let out = Pipe()
         proc.standardOutput = out
-        proc.standardError = Pipe()
+        // Discard, don't Pipe(): an undrained pipe deadlocks the child if
+        // it ever writes more than the buffer.
+        proc.standardError = FileHandle.nullDevice
         do {
             try proc.run()
         } catch {

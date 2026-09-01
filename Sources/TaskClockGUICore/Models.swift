@@ -17,6 +17,9 @@ public struct TaskView: Decodable, Equatable, Sendable {
     public var nextFire: Date?
     public var nextExpectedRun: NextExpected
     public var running: RunningStatus?
+    /// The running run was adopted from a previous daemon (alive and
+    /// policy-managed, but its exit status will be unknowable).
+    public var releasedUnmanaged: Bool
     public var queuedFor: Date?
     public var overrunSeconds: Double
     public var lastRun: Run?
@@ -27,6 +30,7 @@ public struct TaskView: Decodable, Equatable, Sendable {
         case nextFire = "next_fire"
         case nextExpectedRun = "next_expected_run"
         case running
+        case releasedUnmanaged = "released_unmanaged"
         case queuedFor = "queued_for"
         case overrunSeconds = "overrun_seconds"
         case lastRun = "last_run"
@@ -45,6 +49,7 @@ public struct TaskView: Decodable, Equatable, Sendable {
         nextExpectedRun = try c.decodeIfPresent(NextExpected.self, forKey: .nextExpectedRun)
             ?? NextExpected(kind: "none", at: nil)
         running = try c.decodeIfPresent(RunningStatus.self, forKey: .running)
+        releasedUnmanaged = try c.decodeIfPresent(Bool.self, forKey: .releasedUnmanaged) ?? false
         queuedFor = try c.decodeIfPresent(Date.self, forKey: .queuedFor)
         overrunSeconds = try c.decodeIfPresent(Double.self, forKey: .overrunSeconds) ?? 0
         lastRun = try c.decodeIfPresent(Run.self, forKey: .lastRun)
@@ -55,9 +60,11 @@ public struct TaskView: Decodable, Equatable, Sendable {
         cron: String = "", watermark: String = "", overlap: String = "",
         catchUp: Bool = true, nextFire: Date? = nil,
         nextExpectedRun: NextExpected = NextExpected(kind: "none", at: nil),
-        running: RunningStatus? = nil, queuedFor: Date? = nil,
+        running: RunningStatus? = nil, releasedUnmanaged: Bool = false,
+        queuedFor: Date? = nil,
         overrunSeconds: Double = 0, lastRun: Run? = nil
     ) {
+        self.releasedUnmanaged = releasedUnmanaged
         self.name = name
         self.enabled = enabled
         self.paused = paused

@@ -216,9 +216,26 @@ final class AppModel: ObservableObject {
     // switch for both meant uninstalling to pause). Install/uninstall is
     // setup — plist registration, binary copy. The power switch is the run
     // state — `task-clock start`/`stop`; stop never kills running tasks.
+    //
+    // Lifecycle actions run STRICTLY in order: a rapid off→on must execute
+    // stop fully before start (whose teardown-settle check then does its
+    // job) — concurrent launchctl calls interleaving is how a switch and
+    // the daemon end up disagreeing.
+
+    private var lifecycleChain: Task<Void, Never>?
+
+    private func enqueueLifecycle(_ body: @escaping @Sendable () async -> Void) {
+        let previous = lifecycleChain
+        // Detached: the CLI/launchctl calls block, and must never run on
+        // the main actor this class is isolated to.
+        lifecycleChain = Task.detached(priority: .userInitiated) {
+            await previous?.value
+            await body()
+        }
+    }
 
     func setDaemonInstalled(_ requested: Bool) {
-        Task.detached(priority: .userInitiated) { [weak self] in
+        enqueueLifecycle { [weak self] in
             var failure: String?
             do {
                 if requested {
@@ -248,7 +265,7 @@ final class AppModel: ObservableObject {
     }
 
     func setDaemonRunning(_ requested: Bool) {
-        Task.detached(priority: .userInitiated) { [weak self] in
+        enqueueLifecycle { [weak self] in
             var failure: String?
             do {
                 if requested {
