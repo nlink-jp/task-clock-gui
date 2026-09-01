@@ -59,6 +59,11 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   applicationDidResignActive で明示 orderOut + 表示直後 0.5s の grace、
   setFrameAutosaveName + 表示時に visibleFrame へクランプ。移植元は
   instant-translate の AppController。
+- **click-away は didResignActive だけでは不完全** — .nonactivatingPanel は
+  アプリが一度も active にならない経路があり resign が来ない。表示中のみ
+  global+local マウスモニタで自前クローズ（status-lens 移植; local は
+  status button の window を除外しないと close→再 open で閉じられなくなる。
+  NSEvent は非 Sendable — window を先に取り出してから assumeIsolated）。
 - タスク行の HStack: テキスト側は `frame(maxWidth:.infinity)` + truncate、
   コントロール側は `fixedSize()+layoutPriority(1)` — 長い状態文でボタンが
   押し出される回帰を防ぐ組。片方だけでは効かない。

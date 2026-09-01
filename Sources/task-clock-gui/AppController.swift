@@ -26,6 +26,7 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject {
     private var panel: NSPanel?
     private var cancellable: AnyCancellable?
     private var lastShownAt = Date.distantPast
+    private var clickMonitors: [Any] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -91,13 +92,54 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject {
         p.makeKeyAndOrderFront(nil)
         p.orderFrontRegardless() // front even if activation was denied
         lastShownAt = Date()
+        installClickMonitors()
         model.popoverOpened()
     }
 
     private func hidePanel() {
+        removeClickMonitors()
         guard let panel, panel.isVisible else { return }
         panel.orderOut(nil)
         model.popoverClosed()
+    }
+
+    /// Click-away close. `applicationDidResignActive` alone is not enough:
+    /// the panel is `.nonactivatingPanel`, so the app may never have been
+    /// active in the first place — clicking the desktop or another app
+    /// then produces no resign event at all. The org's proven answer
+    /// (status-lens) is event monitors installed only while the panel is
+    /// shown: a global monitor for clicks delivered to other apps, a local
+    /// one for clicks in our own windows outside the panel.
+    private func installClickMonitors() {
+        removeClickMonitors()
+        let events: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown]
+        let global = NSEvent.addGlobalMonitorForEvents(matching: events) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.hidePanel()
+            }
+        }
+        let local = NSEvent.addLocalMonitorForEvents(matching: events) { [weak self] event in
+            // NSEvent is not Sendable: extract what we need before hopping
+            // into the isolated closure, and return the event outside it.
+            let window = event.window
+            MainActor.assumeIsolated {
+                guard let self, let panel = self.panel, panel.isVisible else { return }
+                if window === panel { return } // clicks inside stay inside
+                // The status item button toggles the panel itself; closing
+                // here too would make its click close-then-reopen.
+                if window === self.statusItem?.button?.window { return }
+                self.hidePanel()
+            }
+            return event
+        }
+        clickMonitors = [global, local].compactMap { $0 }
+    }
+
+    private func removeClickMonitors() {
+        for monitor in clickMonitors {
+            NSEvent.removeMonitor(monitor)
+        }
+        clickMonitors = []
     }
 
     private func ensurePanel() -> NSPanel {
