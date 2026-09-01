@@ -36,11 +36,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
   start`/`stop` — stopping never kills running tasks) instead of
   registering/removing the launch agent: stopping is a daily operation,
   installing is setup, and one switch for both meant uninstalling to
-  pause (user feedback). Setup moved to its own controls — an Install
-  button in the not-installed view, and a double-click Uninstall in the
-  footer. The lamp distinguishes gray "stopped (by you)" from orange
-  "should be running but isn't", and a deliberate stop still never
-  notifies
+  pause (user feedback). On a fresh machine the first switch-on installs
+  the launch agent too (the switch is the run intent; setup is included
+  the one time it is needed). The explicit setup control sits in the
+  footer beside Reload — install plainly, uninstall behind the
+  run-now-style two-click interlock (armed shows as color only). The
+  lamp distinguishes gray "stopped (by you)" from orange "should be
+  running but isn't", and a deliberate stop still never notifies
+- The panel got a design pass against visual noise (user feedback: the
+  piecemeal additions read as clutter). State has one idiom everywhere —
+  a small dot in the lamp's color grammar (green/orange/red/gray) with
+  the caption text carrying the reason; the per-state SF-symbol zoo is
+  gone. Three text levels only (title / task name / gray caption).
+  Switches align in one right-edge column; header composition is fixed
+  in every state (Restart moved into the stalled explanation, the
+  freshness timestamp into the lamp tooltip, the cron spec into the
+  history header, and the task rows' duplicate reveal-log button was
+  removed — each run's log is in the history view). Footer, two rows:
+  borderless icon+label Reload and Install/Uninstall on top; the
+  launch-at-login checkbox, selectable version, and a power-icon Quit
+  (no confirmation — quitting the app never touches the daemon) on the
+  bottom row
 - Daemon lifecycle actions (start/stop/install/uninstall) run strictly
   in order — a rapid off→on executes the stop fully before the start, so
   interleaved launchctl calls cannot leave the switch and the daemon

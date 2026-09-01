@@ -81,10 +81,25 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   押し出される回帰を防ぐ組。片方だけでは効かない。
 - 即時実行ボタンは 2 クリックインターロック（TaskRow の runArmed、3s で
   自動解除）— 単発クリックでタスクを起動させない（ユーザー要件）。
-- **電源スイッチは動作状態のみ**（`task-clock start`/`stop` 経由）—
-  install/uninstall はセットアップで別コントロール（未インストール面の
-  Install ボタン + フッターの 2 クリック Uninstall）。1 つのスイッチに
-  戻さない（「止めるためにアンインストール」の再演になる — ユーザー指摘）。
+- **電源スイッチ = 動作意図**（`task-clock start`/`stop` 経由）。未インス
+  トール機での最初の ON だけは install（登録+起動）を兼ねる — Install
+  ボタンは置かない（ユーザー指摘）。OFF は常に stop のみで uninstall には
+  しない（「止めるためにアンインストール」の再演禁止 — 実地事故起点）。
+  uninstall はフッター上段・Reload の右隣の icon+label ボタン（2 クリック
+  インターロック; 武装は**色のみ橙**でラベルは「Uninstall」のまま —
+  文言変更は視覚ノイズというユーザー指摘。未インストール時は同じ位置が
+  Install）。
+  install/start の分岐は enqueueLifecycle の body 内で plist 実在を読んで
+  決める（UI 状態のキャプチャは連鎖中に古びる）。
+- **見た目の統一ルール**（ユーザー指摘「がちゃがちゃ」起点）: 状態表示は
+  ランプ色文法のドット 1 種（per-state シンボル禁止・理由は caption が
+  語る）。文字 3 段（headline/body/caption 灰）。スイッチは右端 1 列。
+  ヘッダー構成は全状態で不変（要素の出没でレイアウトを動かさない —
+  Restart は stalled 本文側・鮮度は ランプ tooltip・cron は履歴ヘッダー）。
+  フッターは 2 段: 上段 = borderless icon+label の Reload と
+  Install/Uninstall、下段（最下段）= ログイン時起動 checkbox（左）と
+  バージョン + 電源アイコン Quit（右; 確認なし — アプリ終了はデーモンに
+  触れない）。ヘッダーの右端はスイッチのみ。
 - 状態は三層: installed（plist 有無）× enabled（launchd の disable 記録 =
   永続的な意図; `launchctl print-disabled` を DaemonControl が読み、解析は
   Core の `daemonEnabledInDump` — 旧形式 `=> true` も disabled）× up（API

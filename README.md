@@ -39,9 +39,10 @@ last run's captured log.
   green (running), orange (should be running but not responding, with a
   Restart button), gray (stopped, or not installed) — with a power switch
   for the run state (`task-clock start`/`stop` via the bundled CLI;
-  stopping never kills running tasks, and the stop survives logins).
-  Setup is separate: an Install button appears when no launch agent is
-  registered, and uninstalling is a double-click control in the footer
+  stopping never kills running tasks, and the stop survives logins). On a
+  fresh machine the first switch-on installs the launch agent too; the
+  explicit setup control (install / two-click uninstall) sits in the
+  footer beside Reload
 - **Launch at login** toggle (SMAppService), with honest feedback when
   macOS wants approval in System Settings
 - **Notifications**: a banner when a task enters overrun, when a run
