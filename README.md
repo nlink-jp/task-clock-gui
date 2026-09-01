@@ -36,9 +36,12 @@ last run's captured log.
   missed with reason), each with its captured log one click away; live
   while a run is in flight
 - **Daemon lifecycle without a terminal**: a persistent pilot-lamp row —
-  green (running), orange (registered but not responding, with a Restart
-  button), gray (stopped) — with a power switch that registers/removes the
-  launch agent via the bundled CLI
+  green (running), orange (should be running but not responding, with a
+  Restart button), gray (stopped, or not installed) — with a power switch
+  for the run state (`task-clock start`/`stop` via the bundled CLI;
+  stopping never kills running tasks, and the stop survives logins).
+  Setup is separate: an Install button appears when no launch agent is
+  registered, and uninstalling is a double-click control in the footer
 - **Launch at login** toggle (SMAppService), with honest feedback when
   macOS wants approval in System Settings
 - **Notifications**: a banner when a task enters overrun, when a run

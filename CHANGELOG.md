@@ -23,6 +23,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 
 ### Changed
 
+- The power switch now flips only the daemon's run state (`task-clock
+  start`/`stop` — stopping never kills running tasks) instead of
+  registering/removing the launch agent: stopping is a daily operation,
+  installing is setup, and one switch for both meant uninstalling to
+  pause (user feedback). Setup moved to its own controls — an Install
+  button in the not-installed view, and a double-click Uninstall in the
+  footer. The lamp distinguishes gray "stopped (by you)" from orange
+  "should be running but isn't", and a deliberate stop still never
+  notifies
 - Panel content is built on open and torn down on close (the org's
   lazy-popover shape) — nothing renders while hidden (A3)
 - A hard notification denial is stated in the footer with an Open

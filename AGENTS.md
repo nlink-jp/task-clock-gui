@@ -81,10 +81,20 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   押し出される回帰を防ぐ組。片方だけでは効かない。
 - 即時実行ボタンは 2 クリックインターロック（TaskRow の runArmed、3s で
   自動解除）— 単発クリックでタスクを起動させない（ユーザー要件）。
-- **daemon-down 通知は「登録が残ったまま落ちた」ときだけ**（KeepAlive 失敗 =
-  異常）。登録ごと消えた停止（GUI スイッチ OFF / `task-clock uninstall`）は
-  意図的停止なので通知しない — 意図は intent フラグでなく観測可能な状態
-  （installedNow）から導く。transitionEvents のテストがこの規則を固定。
+- **電源スイッチは動作状態のみ**（`task-clock start`/`stop` 経由）—
+  install/uninstall はセットアップで別コントロール（未インストール面の
+  Install ボタン + フッターの 2 クリック Uninstall）。1 つのスイッチに
+  戻さない（「止めるためにアンインストール」の再演になる — ユーザー指摘）。
+- 状態は三層: installed（plist 有無）× enabled（launchd の disable 記録 =
+  永続的な意図; `launchctl print-disabled` を DaemonControl が読み、解析は
+  Core の `daemonEnabledInDump` — 旧形式 `=> true` も disabled）× up（API
+  応答）。ランプ: 緑=up / 橙=installed+enabled+!up（異常・Restart 付き）/
+  灰=stopped（意図的）または notInstalled。判読不能 dump は enabled 扱い
+  （勝手に「意図的停止」を発明すると down 通知が黙る）。
+- **daemon-down 通知は「動くはずなのに落ちた」ときだけ**（KeepAlive 失敗 =
+  異常）。意図的停止（stop の disable / uninstall の登録抹消）は通知しない —
+  意図は intent フラグでなく観測可能な状態（installed && enabled）から
+  導く。transitionEvents のテストがこの規則を固定。
 
 - CLI の stderr 文言（"daemon is not running" 等）に `CLIRunner.classify` が
   依存。CLI 側の文言変更時はここも追随（テストが fixture で守る）。
