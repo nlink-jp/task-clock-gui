@@ -15,6 +15,10 @@ final class AppModel: ObservableObject {
     /// distinct from daemonUp: a foreground `serve` is up but not installed.
     @Published var daemonInstalled = false
 
+    /// Notifications are hard-denied in System Settings — surfaced in the
+    /// popover because banners are otherwise silently dead forever.
+    @Published var notificationsDenied = false
+
     /// Non-nil while the popover shows a task's run history (Phase 2).
     @Published var historyTask: String?
     @Published var historyRuns: [Run] = []
@@ -43,8 +47,11 @@ final class AppModel: ObservableObject {
 
     func popoverOpened() {
         reschedule(interval: Self.foregroundInterval)
-        // Re-read: the user can flip this in System Settings behind our back.
+        // Re-read: the user can flip these in System Settings behind our back.
         launchAtLogin = LoginItem.isEnabled
+        Notifier.shared.checkDenied { [weak self] denied in
+            self?.notificationsDenied = denied
+        }
         refresh()
     }
 

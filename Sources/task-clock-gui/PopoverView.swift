@@ -16,7 +16,7 @@ struct PopoverView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             if let error = model.lastError {
                 Divider()
-                Label(error, systemImage: "exclamationmark.triangle")
+                Label(error, systemImage: Symbols.errorLabel)
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .lineLimit(3)
@@ -134,6 +134,23 @@ struct PopoverView: View {
 
     private var footer: some View {
         VStack(spacing: 6) {
+            if model.notificationsDenied {
+                // Banners are a shipped behavior that can be permanently,
+                // silently dead — the screen is this app's only channel,
+                // so a hard denial is stated where the user acts.
+                HStack(spacing: 4) {
+                    Text("Notifications are off for TaskClock.")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    Button("Open Settings") {
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    .controlSize(.small)
+                    Spacer()
+                }
+            }
             if model.loginItemAvailable {
                 HStack {
                     Toggle("Launch at login", isOn: Binding(
@@ -147,15 +164,19 @@ struct PopoverView: View {
                 }
             }
             HStack {
+                // Never disabled on !daemonUp: "down" also covers "starting
+                // right now", and a reload against a truly down daemon just
+                // reports in the same view (ambiguous-status rule).
                 Button("Reload task definitions") { model.reload() }
-                    .disabled(!model.daemonUp)
                     .help("Tell the daemon to re-read its tasks.d config files (task-clock reload)")
                 Spacer()
                 // appVersion already carries the v prefix (git describe) —
-                // adding another produced "vv0.1.0".
+                // adding another produced "vv0.1.0". Selectable so a bug
+                // report can paste the exact build.
                 Text(appVersion)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
                 Button("Quit") { NSApplication.shared.terminate(nil) }
             }
         }
@@ -173,17 +194,17 @@ struct IndicatorIcon: View {
         Group {
             switch indicator {
             case .disabled:
-                Image(systemName: "minus.circle").foregroundStyle(.secondary)
+                Image(systemName: Symbols.indicatorDisabled).foregroundStyle(.secondary)
             case .paused:
-                Image(systemName: "pause.circle").foregroundStyle(.secondary)
+                Image(systemName: Symbols.indicatorPaused).foregroundStyle(.secondary)
             case .overrun:
-                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
+                Image(systemName: Symbols.indicatorOverrun).foregroundStyle(.orange)
             case .running:
-                Image(systemName: "play.circle.fill").foregroundStyle(.green)
+                Image(systemName: Symbols.indicatorRunning).foregroundStyle(.green)
             case .failed:
-                Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+                Image(systemName: Symbols.indicatorFailed).foregroundStyle(.red)
             case .missedLast:
-                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                Image(systemName: Symbols.indicatorMissed).foregroundStyle(.orange)
             case .healthy:
                 Circle().fill(.green).frame(width: 10, height: 10)
             }
@@ -214,7 +235,7 @@ struct TaskRow: View {
                     Text(text.trigger)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Image(systemName: "chevron.right")
+                    Image(systemName: Symbols.historyChevron)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -266,7 +287,7 @@ struct TaskRow: View {
                     }
                 }
             } label: {
-                Image(systemName: runArmed ? "play.circle.fill" : "play.fill")
+                Image(systemName: runArmed ? Symbols.runNowArmed : Symbols.runNow)
                     .foregroundStyle(runArmed ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary))
             }
             .buttonStyle(.borderless)
@@ -278,7 +299,7 @@ struct TaskRow: View {
             Button {
                 NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: log)])
             } label: {
-                Image(systemName: "doc.text.magnifyingglass")
+                Image(systemName: Symbols.revealLog)
             }
             .buttonStyle(.borderless)
             .help("Reveal the last run's log in Finder")

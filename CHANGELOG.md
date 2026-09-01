@@ -3,6 +3,29 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Esc now goes through the same close path as click-away (StatusPanel
+  routes cancelOperation to the controller), so closing with Esc no
+  longer leaves the 5-second foreground poll running forever
+  (verification finding A2)
+- Foreground notifications keep a Notification Center entry (`.list`
+  added to willPresent) instead of vanishing after the banner (A1)
+- Reload is no longer disabled while the daemon is unreachable —
+  "down" also covers "starting right now", and a failed reload reports
+  in the same view (A5)
+
+### Changed
+
+- Panel content is built on open and torn down on close (the org's
+  lazy-popover shape) — nothing renders while hidden (A3)
+- A hard notification denial is stated in the footer with an Open
+  Settings shortcut instead of only on stderr (A6)
+- Every SF Symbol name lives in a tested inventory (Symbols); the
+  version label is selectable for bug reports (A4, A7)
+
 ## [0.4.1] - 2026-09-01
 
 ### Fixed

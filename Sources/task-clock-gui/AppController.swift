@@ -5,9 +5,18 @@ import TaskClockGUICore
 
 /// The status panel's window: takes key status without the app being
 /// active (Esc handling, crisp control focus), never becomes main.
+/// Esc is routed through `onCancel` so every close path goes through the
+/// controller's `hidePanel()` bookkeeping — the default close would skip
+/// monitor teardown and the model's closed hook (verification finding A2).
 final class StatusPanel: NSPanel {
+    var onCancel: (() -> Void)?
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    override func cancelOperation(_ sender: Any?) {
+        onCancel?()
+    }
 }
 
 /// Owns the menu-bar presence and the resizable status panel.
@@ -49,9 +58,9 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.renderStatusButton() }
         renderStatusButton()
-
-        // Pre-warm the panel so the first open pays no construction cost.
-        _ = ensurePanel()
+        // No panel pre-warm: content is built on open and torn down on
+        // close (the org's lazy-popover shape), so no SwiftUI tree — the
+        // 1 Hz TimelineView included — lays out or ticks while hidden.
     }
 
     /// Click-away behaviour: dismiss when the app loses focus, via an
@@ -87,6 +96,11 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject {
 
     private func showPanel() {
         let p = ensurePanel()
+        // Lazy content: built here, torn down in hidePanel, so nothing
+        // renders while the panel is hidden.
+        let host = NSHostingView(rootView: PopoverView(model: model))
+        host.autoresizingMask = [.width, .height]
+        p.contentView = host
         position(p)
         NSApp.activate()
         p.makeKeyAndOrderFront(nil)
@@ -96,10 +110,15 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject {
         model.popoverOpened()
     }
 
+    /// The single close path — click-away, toggle, resign-active and Esc
+    /// (via StatusPanel.onCancel) all land here, so the monitors and the
+    /// model's closed hook can never be skipped. Idempotent by design.
     private func hidePanel() {
         removeClickMonitors()
-        guard let panel, panel.isVisible else { return }
-        panel.orderOut(nil)
+        if let panel, panel.isVisible {
+            panel.orderOut(nil)
+            panel.contentView = nil
+        }
         model.popoverClosed()
     }
 
@@ -164,10 +183,8 @@ final class AppController: NSObject, NSApplicationDelegate, ObservableObject {
         p.standardWindowButton(.zoomButton)?.isHidden = true
         p.minSize = NSSize(width: 340, height: 300)
         p.setFrameAutosaveName("TaskClockPanel") // remembers the user's size
-
-        let host = NSHostingView(rootView: PopoverView(model: model))
-        host.autoresizingMask = [.width, .height]
-        p.contentView = host
+        p.onCancel = { [weak self] in self?.hidePanel() }
+        // Content is attached in showPanel and detached in hidePanel.
         panel = p
         return p
     }

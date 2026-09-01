@@ -51,11 +51,30 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     }
 
     /// Show banners even though the (menu-bar) app counts as foreground.
+    /// `.list` matters: without it a foreground banner times out and leaves
+    /// no trace in Notification Center — step away mid-run and the failure
+    /// evidence is gone (verification finding A1; sensor-lens-gui had the
+    /// same lesson recorded).
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        completionHandler([.banner, .sound])
+        completionHandler([.banner, .list, .sound])
+    }
+
+    /// Whether notifications are hard-denied — the popover states it, since
+    /// stderr is a black hole for Finder/login launches and banners are a
+    /// shipped behavior that can otherwise be permanently, silently dead.
+    func checkDenied(_ completion: @escaping @MainActor (Bool) -> Void) {
+        guard let center else {
+            return completion(false)
+        }
+        center.getNotificationSettings { settings in
+            let denied = settings.authorizationStatus == .denied
+            DispatchQueue.main.async {
+                completion(denied)
+            }
+        }
     }
 }

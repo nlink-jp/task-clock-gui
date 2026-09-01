@@ -34,19 +34,19 @@ public func menuBarSummary(tasks: [TaskView], daemonUp: Bool) -> MenuBarSummary 
     guard daemonUp else {
         // Unreachable daemon is "unknown", not "error" — a distinct symbol,
         // never silently the normal one.
-        return MenuBarSummary(symbolName: "clock.badge.questionmark", text: nil)
+        return MenuBarSummary(symbolName: Symbols.barDaemonDown, text: nil)
     }
     let worst = tasks.map(displayState(for:)).max() ?? .idle
     switch worst {
     case .overrun:
         let seconds = tasks.map(\.overrunSeconds).max() ?? 0
         return MenuBarSummary(
-            symbolName: "clock.badge.exclamationmark",
+            symbolName: Symbols.barOverrun,
             text: compactDuration(seconds))
     case .running:
-        return MenuBarSummary(symbolName: "clock.arrow.circlepath", text: nil)
+        return MenuBarSummary(symbolName: Symbols.barRunning, text: nil)
     default:
-        return MenuBarSummary(symbolName: "clock", text: nil)
+        return MenuBarSummary(symbolName: Symbols.barHealthy, text: nil)
     }
 }
 

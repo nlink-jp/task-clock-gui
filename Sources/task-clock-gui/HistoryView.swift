@@ -14,7 +14,7 @@ struct HistoryView: View {
             header
             Divider()
             if let error = model.historyError {
-                Label(error, systemImage: "exclamationmark.triangle")
+                Label(error, systemImage: Symbols.errorLabel)
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .lineLimit(3)
@@ -43,7 +43,7 @@ struct HistoryView: View {
             Button {
                 model.closeHistory()
             } label: {
-                Image(systemName: "chevron.backward")
+                Image(systemName: Symbols.historyBack)
             }
             .buttonStyle(.borderless)
             .help("Back to the task list")
@@ -87,7 +87,7 @@ struct HistoryRow: View {
                     NSWorkspace.shared.activateFileViewerSelecting(
                         [URL(fileURLWithPath: run.logPath)])
                 } label: {
-                    Image(systemName: "doc.text.magnifyingglass")
+                    Image(systemName: Symbols.revealLog)
                 }
                 .buttonStyle(.borderless)
                 .help("Reveal this run's log in Finder")

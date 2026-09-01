@@ -59,6 +59,15 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   applicationDidResignActive で明示 orderOut + 表示直後 0.5s の grace、
   setFrameAutosaveName + 表示時に visibleFrame へクランプ。移植元は
   instant-translate の AppController。
+- **クローズ経路は hidePanel() 一本**: click-away・トグル・resign・Esc
+  (StatusPanel.onCancel→cancelOperation) すべて経由。新しい閉じ方を足すときも
+  必ずここを通す — 素通りするとモニタ解除と popoverClosed が飛ぶ (検証指摘 A2)。
+- **パネル内容は開いた時だけ生成** (showPanel で NSHostingView 構築、hidePanel で
+  破棄) — 非表示中に SwiftUI ツリーを描画させない。pre-warm を復活させない。
+- **SF Symbol は Core の Symbols インベントリ経由のみ** — view に文字列直書き
+  禁止。実在テスト (SymbolResolutionTests) が全名を NSImage 解決する。
+- willPresent は [.banner, .list, .sound] — .list が無いと前面時の通知が
+  通知センターに残らない。
 - **click-away は didResignActive だけでは不完全** — .nonactivatingPanel は
   アプリが一度も active にならない経路があり resign が来ない。表示中のみ
   global+local マウスモニタで自前クローズ（status-lens 移植; local は

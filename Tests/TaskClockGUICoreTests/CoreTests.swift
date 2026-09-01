@@ -1,5 +1,37 @@
+import AppKit
 import XCTest
 @testable import TaskClockGUICore
+
+final class SymbolResolutionTests: XCTestCase {
+    // A plausible-but-fake SF Symbol name fails neither compile nor
+    // runtime — it renders blank. Every emit-able name must resolve.
+    func testEveryInventorySymbolResolves() {
+        for name in Symbols.all {
+            XCTAssertNotNil(
+                NSImage(systemSymbolName: name, accessibilityDescription: nil),
+                "SF Symbol does not exist: \(name)")
+        }
+    }
+
+    // The menu-bar summaries must only ever emit inventoried names.
+    func testMenuBarSummariesEmitInventoriedSymbols() {
+        let running = TaskView(
+            name: "a",
+            running: RunningStatus(scheduledFor: Date(), startedAt: Date(), elapsedSeconds: 5))
+        var overrun = running
+        overrun.overrunSeconds = 90
+        let summaries = [
+            menuBarSummary(tasks: [], daemonUp: false),
+            menuBarSummary(tasks: [TaskView(name: "a")], daemonUp: true),
+            menuBarSummary(tasks: [running], daemonUp: true),
+            menuBarSummary(tasks: [overrun], daemonUp: true),
+        ]
+        for summary in summaries {
+            XCTAssertTrue(Symbols.all.contains(summary.symbolName),
+                          "menu bar emits uninventoried symbol: \(summary.symbolName)")
+        }
+    }
+}
 
 final class DecodeTests: XCTestCase {
     // A representative `task-clock status --json` payload (API pass-through).
