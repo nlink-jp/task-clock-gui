@@ -3,7 +3,14 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.0] - 2026-09-02
+
+### Changed (bundled CLI)
+
+- Bundles task-clock v0.4.0: a stopping daemon never kills running tasks
+  (live-run registry + adoption), the daemon binary lives in its own
+  stable home, and the new `start`/`stop` run-state commands back the
+  power switch
 
 ### Fixed
 
