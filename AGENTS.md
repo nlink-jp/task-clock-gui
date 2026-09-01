@@ -52,6 +52,9 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   プロンプトの有無を必ず確認。TCC 要求は AppStart.once（起動時）にある。
 - daemonInstalled（plist 存在）と daemonUp（API 応答）は別状態。plist パスは
   Core の `daemonPlistPath`（CLI の label `jp.nlink.task-clock` が契約）。
+- **パネル内コントロールにキーボードフォーカスを与えない** — 全 Button/Toggle
+  に `.focusable(false)`（実地事故: 電源スイッチにフォーカスが乗り、Space
+  誤打でデーモン停止 → タスク道連れ）。コントロール追加時も必ず付けること。
 - **殻は AppKit**（AppController: NSStatusItem + NSPanel）— MenuBarExtra は
   ユーザーリサイズ不可のため移行済み（グリップ方式は違和感で廃案）。NSPanel の
   鉄則: styleMask に `.nonactivatingPanel` 必須（無いと起動直後~30s 開かない）、

@@ -46,6 +46,7 @@ struct HistoryView: View {
                 Image(systemName: Symbols.historyBack)
             }
             .buttonStyle(.borderless)
+            .focusable(false)
             .help("Back to the task list")
             Text(taskName).font(.system(.body, weight: .medium))
             Text("run history")
@@ -90,6 +91,7 @@ struct HistoryRow: View {
                     Image(systemName: Symbols.revealLog)
                 }
                 .buttonStyle(.borderless)
+                .focusable(false)
                 .help("Reveal this run's log in Finder")
             }
         }

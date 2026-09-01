@@ -53,10 +53,12 @@ struct PopoverView: View {
             .toggleStyle(.switch)
             .controlSize(.mini)
             .labelsHidden()
+            .focusable(false)
             .help("Power: register / remove the task-clock launch agent (starts and stops the daemon)")
             if lamp == .stalled {
                 Button("Restart") { model.setDaemonInstalled(true) }
                     .controlSize(.small)
+                    .focusable(false)
                     .help("Re-register the launch agent (task-clock install)")
             }
             Spacer()
@@ -148,6 +150,7 @@ struct PopoverView: View {
                         }
                     }
                     .controlSize(.small)
+                    .focusable(false)
                     Spacer()
                 }
             }
@@ -159,6 +162,7 @@ struct PopoverView: View {
                     ))
                     .toggleStyle(.checkbox)
                     .font(.caption)
+                    .focusable(false)
                     .help("Open this menu-bar app when you log in")
                     Spacer()
                 }
@@ -168,6 +172,7 @@ struct PopoverView: View {
                 // right now", and a reload against a truly down daemon just
                 // reports in the same view (ambiguous-status rule).
                 Button("Reload task definitions") { model.reload() }
+                    .focusable(false)
                     .help("Tell the daemon to re-read its tasks.d config files (task-clock reload)")
                 Spacer()
                 // appVersion already carries the v prefix (git describe) —
@@ -178,6 +183,7 @@ struct PopoverView: View {
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
                 Button("Quit") { NSApplication.shared.terminate(nil) }
+                    .focusable(false)
             }
         }
         .padding(EdgeInsets(top: 8, leading: 12, bottom: 10, trailing: 12))
@@ -291,6 +297,7 @@ struct TaskRow: View {
                     .foregroundStyle(runArmed ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary))
             }
             .buttonStyle(.borderless)
+            .focusable(false)
             .help(runArmed
                 ? "Click again to run now"
                 : "Run now — click twice (interlock; works even while off)")
@@ -302,6 +309,7 @@ struct TaskRow: View {
                 Image(systemName: Symbols.revealLog)
             }
             .buttonStyle(.borderless)
+            .focusable(false)
             .help("Reveal the last run's log in Finder")
         }
         if task.enabled {
@@ -319,6 +327,7 @@ struct TaskRow: View {
             .toggleStyle(.switch)
             .controlSize(.mini)
             .labelsHidden()
+            .focusable(false)
             .help(task.paused
                 ? "Off — scheduling paused (persists until turned on)"
                 : "On — scheduled; turn off to pause")

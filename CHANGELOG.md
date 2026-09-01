@@ -7,6 +7,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 
 ### Fixed
 
+- No control in the panel takes keyboard focus any more
+  (`.focusable(false)` across the board): the daemon power switch could
+  end up focused, and an accidental Space press stopped the daemon —
+  and with it the running tasks (field incident)
 - Esc now goes through the same close path as click-away (StatusPanel
   routes cancelOperation to the controller), so closing with Esc no
   longer leaves the 5-second foreground poll running forever
