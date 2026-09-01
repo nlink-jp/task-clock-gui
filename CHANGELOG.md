@@ -7,6 +7,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 
 ### Fixed
 
+- A failing run longer than one poll interval now raises its failure
+  banner: the previous poll sees the run open under the same id, and the
+  old new-id-only check read that as "already notified" (verification
+  finding) — only runs that started AND failed inside a single poll
+  interval ever notified
+- Adopted runs (the population the stop/start switch creates) show as
+  `running (unmanaged)`, and their finalization — exit unknowable, not a
+  failure — no longer risks a false "failed" banner (the daemon records
+  it without an exit code, and the banner requires one)
 - No control in the panel takes keyboard focus any more
   (`.focusable(false)` across the board): the daemon power switch could
   end up focused, and an accidental Space press stopped the daemon —
@@ -32,6 +41,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
   footer. The lamp distinguishes gray "stopped (by you)" from orange
   "should be running but isn't", and a deliberate stop still never
   notifies
+- Daemon lifecycle actions (start/stop/install/uninstall) run strictly
+  in order — a rapid off→on executes the stop fully before the start, so
+  interleaved launchctl calls cannot leave the switch and the daemon
+  disagreeing
 - Panel content is built on open and torn down on close (the org's
   lazy-popover shape) — nothing renders while hidden (A3)
 - A hard notification denial is stated in the footer with an Open

@@ -95,6 +95,14 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   異常）。意図的停止（stop の disable / uninstall の登録抹消）は通知しない —
   意図は intent フラグでなく観測可能な状態（installed && enabled）から
   導く。transitionEvents のテストがこの規則を固定。
+- **失敗バナーの条件は「同 id の open→failed 遷移」も含む** — lastRun には
+  実行中の open 行が入るため、新 id 判定だけだと 1 ポーリング間隔より長い
+  run の失敗が全部沈黙する（検証パスの指摘）。exit code なしの終了
+  （adopted run の finalize = 不明）は失敗ではない — バナー禁止。
+- **ライフサイクル操作は enqueueLifecycle で直列化**（Task chain、detached —
+  CLI はブロッキングなので main actor で走らせない）。並行 launchctl の
+  interleave はスイッチと実状態の乖離を生む。
+- adopted run は `running (unmanaged)` 表示（releasedUnmanaged を decode）。
 
 - CLI の stderr 文言（"daemon is not running" 等）に `CLIRunner.classify` が
   依存。CLI 側の文言変更時はここも追随（テストが fixture で守る）。
