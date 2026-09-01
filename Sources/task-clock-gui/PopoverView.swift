@@ -4,6 +4,14 @@ import TaskClockGUICore
 struct PopoverView: View {
     @ObservedObject var model: AppModel
 
+    // Panel size, user-adjustable via the resize grip and persisted.
+    // MenuBarExtra windows have no native resize frame — the window tracks
+    // its content's ideal size, so dragging the grip mutates these and the
+    // window follows.
+    @AppStorage("panelWidth") private var panelWidth = Double(PopoverLayout.defaultWidth)
+    @AppStorage("listMaxHeight") private var listMaxHeight = Double(PopoverLayout.maxHeight)
+    @State private var dragStart: (width: Double, height: Double)?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
@@ -20,10 +28,41 @@ struct PopoverView: View {
             Divider()
             footer
         }
-        .frame(width: 380)
+        .frame(width: panelWidth)
         // The popover sizes itself to the content's ideal height; make the
         // VStack claim what it needs instead of being squeezed.
         .fixedSize(horizontal: false, vertical: true)
+        .overlay(alignment: .bottomTrailing) { resizeGrip }
+    }
+
+    var listHeightCap: CGFloat { CGFloat(listMaxHeight) }
+
+    /// Bottom-right resize grip: drag to resize width and list height,
+    /// double-click to restore the defaults.
+    private var resizeGrip: some View {
+        Image(systemName: "arrow.up.backward.and.arrow.down.forward")
+            .font(.system(size: 8, weight: .bold))
+            .foregroundStyle(.tertiary)
+            .rotationEffect(.degrees(90)) // point along the ↘ diagonal
+            .padding(4)
+            .contentShape(Rectangle())
+            .help("Drag to resize — double-click to reset")
+            .gesture(
+                DragGesture(minimumDistance: 1)
+                    .onChanged { value in
+                        let start = dragStart ?? (panelWidth, listMaxHeight)
+                        dragStart = start
+                        panelWidth = Double(PopoverLayout.clampWidth(
+                            CGFloat(start.width) + value.translation.width))
+                        listMaxHeight = Double(PopoverLayout.clampListHeight(
+                            CGFloat(start.height) + value.translation.height))
+                    }
+                    .onEnded { _ in dragStart = nil }
+            )
+            .onTapGesture(count: 2) {
+                panelWidth = Double(PopoverLayout.defaultWidth)
+                listMaxHeight = Double(PopoverLayout.maxHeight)
+            }
     }
 
     /// Title line carries the daemon pilot lamp + power switch
@@ -86,7 +125,7 @@ struct PopoverView: View {
     @ViewBuilder
     private var content: some View {
         if let task = model.historyTask {
-            HistoryView(model: model, taskName: task)
+            HistoryView(model: model, taskName: task, heightCap: listHeightCap)
         } else if !model.daemonUp {
             daemonDown
         } else if model.tasks.isEmpty {
@@ -119,7 +158,8 @@ struct PopoverView: View {
                         }
                     }
                 }
-                .frame(height: PopoverLayout.contentHeight(rows: model.tasks.count))
+                .frame(height: PopoverLayout.contentHeight(
+                    rows: model.tasks.count, cap: listHeightCap))
             }
         }
     }

@@ -8,6 +8,7 @@ import TaskClockGUICore
 struct HistoryView: View {
     @ObservedObject var model: AppModel
     let taskName: String
+    let heightCap: CGFloat
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -35,7 +36,8 @@ struct HistoryView: View {
                         }
                     }
                 }
-                .frame(height: PopoverLayout.historyContentHeight(rows: model.historyRuns.count))
+                .frame(height: PopoverLayout.historyContentHeight(
+                    rows: model.historyRuns.count, cap: heightCap))
             }
         }
     }

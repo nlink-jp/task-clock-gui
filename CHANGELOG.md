@@ -3,6 +3,14 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Resizable panel: a bottom-right grip drags the width and list height
+  (persisted across launches; MenuBarExtra windows have no native resize
+  frame), double-click resets to the defaults
+
 ## [0.3.0] - 2026-09-01
 
 ### Fixed

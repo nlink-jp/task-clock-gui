@@ -51,6 +51,10 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   プロンプトの有無を必ず確認。TCC 要求は AppStart.once（起動時）にある。
 - daemonInstalled（plist 存在）と daemonUp（API 応答）は別状態。plist パスは
   Core の `daemonPlistPath`（CLI の label `jp.nlink.task-clock` が契約）。
+- パネルサイズはリサイズグリップ駆動（@AppStorage 永続; MenuBarExtra は
+  ネイティブのリサイズ枠を持てないため、グリップが状態を変えウィンドウが
+  コンテンツ ideal サイズ追従で付いてくる方式）。clampWidth/clampListHeight
+  と可変 cap は Core でテスト済み。
 - タスク行の HStack: テキスト側は `frame(maxWidth:.infinity)` + truncate、
   コントロール側は `fixedSize()+layoutPriority(1)` — 長い状態文でボタンが
   押し出される回帰を防ぐ組。片方だけでは効かない。

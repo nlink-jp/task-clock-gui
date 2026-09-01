@@ -29,6 +29,8 @@ last run's captured log.
   in the same popover. Tasks with `enabled = false` in the config show no
   switch: that layer belongs to tasks.d, and a control that does nothing
   would lie
+- **Resizable panel**: drag the bottom-right grip to resize the width and
+  list height (persisted); double-click the grip to reset
 - **Run history**: click a task row for its scheduled-vs-actual record —
   one line per fire (scheduled time, start delay, duration, ok / exit N /
   missed with reason), each with its captured log one click away; live
