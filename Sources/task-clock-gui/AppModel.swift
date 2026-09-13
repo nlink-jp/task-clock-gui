@@ -6,9 +6,10 @@ import TaskClockGUICore
 final class AppModel: ObservableObject {
     @Published var tasks: [TaskView] = []
     @Published var daemonUp = false
-    /// Human-readable problem from the last poll or action; nil when healthy.
-    /// Shown in the popover itself — errors must surface where the user acts.
-    @Published var lastError: String?
+    /// The popover's message banner: the last poll's problem and the last
+    /// action's word, deliberately separate channels (see BannerState) —
+    /// errors must surface where the user acts, and stay there.
+    @Published var banner = BannerState()
     @Published var lastUpdated: Date?
     @Published var launchAtLogin = false
     /// Whether the task-clock LaunchAgent is registered (plist present) —
@@ -61,8 +62,10 @@ final class AppModel: ObservableObject {
 
     func popoverClosed() {
         reschedule(interval: Self.backgroundInterval)
-        // Reopening always lands on the task list, not a stale history.
+        // Reopening always lands on the task list, not a stale history —
+        // nor on the answer to a click from an hour ago.
         closeHistory()
+        banner.popoverClosed()
     }
 
     // MARK: - Run history (Phase 2)
@@ -155,18 +158,20 @@ final class AppModel: ObservableObject {
             }
             hasSnapshot = true
         }
+        // A poll reports on the poll only: it must never touch the action
+        // channel, or an action's own re-poll erases the action's message.
         switch outcome {
         case .success(let tasks):
             self.tasks = tasks
             self.daemonUp = true
-            self.lastError = nil
+            self.banner.pollFinished(error: nil)
             self.lastUpdated = Date()
         case .failure(let error):
             if case CLIError.daemonDown = error {
                 self.daemonUp = false
-                self.lastError = nil // a distinct state, not an error banner
+                self.banner.pollFinished(error: nil) // a distinct state, not an error banner
             } else {
-                self.lastError = error.localizedDescription
+                self.banner.pollFinished(error: error.localizedDescription)
             }
             self.lastUpdated = Date()
         }
@@ -181,8 +186,8 @@ final class AppModel: ObservableObject {
     //
     // Actions run the CLI off the main thread, then re-poll so the popover
     // reflects the daemon's actual state — never an optimistic local guess.
-    // Failures land in lastError, visible in the same popover the user
-    // clicked in.
+    // Failures land in the banner's action channel, visible in the same
+    // popover the user clicked in and immune to the re-poll that follows.
 
     func trigger(task: String) { act { try CLIRunner.trigger(task: task) } }
     func pause(task: String) { act { try CLIRunner.pause(task: task) } }
@@ -198,9 +203,7 @@ final class AppModel: ObservableObject {
                 failure = error.localizedDescription
             }
             await MainActor.run { [weak self] in
-                if let failure {
-                    self?.lastError = failure
-                }
+                self?.banner.actionFinished(notice: failure)
             }
             await self?.refresh()
         }
@@ -251,12 +254,8 @@ final class AppModel: ObservableObject {
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.daemonInstalled = installedNow
-                if let failure {
-                    self.lastError = failure
-                } else if let feedback = daemonInstallFeedback(
-                    requested: requested, installedNow: installedNow) {
-                    self.lastError = feedback
-                }
+                self.banner.actionFinished(notice: failure ?? daemonInstallFeedback(
+                    requested: requested, installedNow: installedNow))
             }
             // Give launchd a moment to start/stop the daemon, then re-poll.
             try? await Task.sleep(for: .seconds(1))
@@ -295,15 +294,10 @@ final class AppModel: ObservableObject {
                 guard let self else { return }
                 self.daemonInstalled = installedNow
                 self.daemonEnabled = enabledNow
-                if let failure {
-                    self.lastError = failure
-                } else if requested && !installedBefore {
-                    self.lastError = daemonInstallFeedback(
-                        requested: true, installedNow: installedNow)
-                } else {
-                    self.lastError = daemonRunFeedback(
-                        requested: requested, enabledNow: enabledNow)
-                }
+                let verified = requested && !installedBefore
+                    ? daemonInstallFeedback(requested: true, installedNow: installedNow)
+                    : daemonRunFeedback(requested: requested, enabledNow: enabledNow)
+                self.banner.actionFinished(notice: failure ?? verified)
             }
             try? await Task.sleep(for: .seconds(1))
             await self?.refresh()
@@ -315,17 +309,16 @@ final class AppModel: ObservableObject {
     var loginItemAvailable: Bool { LoginItem.isAvailable }
 
     func setLaunchAtLogin(_ requested: Bool) {
+        var failure: String?
         do {
             try LoginItem.setEnabled(requested)
         } catch {
-            lastError = "Launch at login: \(error.localizedDescription)"
+            failure = "Launch at login: \(error.localizedDescription)"
         }
         // Report the state that actually took effect, never the request —
         // and when they differ without an error, say so (requiresApproval).
         launchAtLogin = LoginItem.isEnabled
-        if lastError == nil, let feedback = loginItemFeedback(
-            requested: requested, nowEnabled: launchAtLogin) {
-            lastError = feedback
-        }
+        banner.actionFinished(notice: failure ?? loginItemFeedback(
+            requested: requested, nowEnabled: launchAtLogin))
     }
 }

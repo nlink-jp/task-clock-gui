@@ -533,3 +533,53 @@ final class BinaryResolutionTests: XCTestCase {
             isExecutable: { _ in false }))
     }
 }
+
+final class BannerStateTests: XCTestCase {
+    // The regression this type exists for: an action re-polls immediately,
+    // and the poll used to clear the very message the action had just
+    // written (~100 ms of visibility — a refused trigger was silent).
+    func testActionNoticeSurvivesTheActionsOwnRepoll() {
+        var banner = BannerState()
+        banner.actionFinished(notice: "That task is already running.")
+        banner.pollFinished(error: nil)
+        XCTAssertEqual(banner.message, "That task is already running.")
+    }
+
+    func testPollErrorShowsWhenNoActionSpoke() {
+        var banner = BannerState()
+        banner.pollFinished(error: "CLI not found")
+        XCTAssertEqual(banner.message, "CLI not found")
+    }
+
+    // The action answers the click the user just made, so it is the one
+    // shown while both channels hold something.
+    func testActionWordWinsOverAPollError() {
+        var banner = BannerState()
+        banner.pollFinished(error: "CLI not found")
+        banner.actionFinished(notice: "That task is already running.")
+        XCTAssertEqual(banner.message, "That task is already running.")
+    }
+
+    func testPollRecoveryClearsOnlyItsOwnChannel() {
+        var banner = BannerState(pollError: "CLI not found", actionNotice: "stale action")
+        banner.pollFinished(error: nil)
+        XCTAssertNil(banner.pollError)
+        XCTAssertEqual(banner.message, "stale action")
+    }
+
+    func testSuccessfulRetryClearsThePreviousFailure() {
+        var banner = BannerState()
+        banner.actionFinished(notice: "That task is already running.")
+        banner.actionFinished(notice: nil)
+        XCTAssertNil(banner.message)
+    }
+
+    // Closing ends the action's context; a poll error is still true, so it
+    // stays until the poll itself recovers.
+    func testClosingThePopoverDropsOnlyTheActionWord() {
+        var banner = BannerState(pollError: "CLI not found", actionNotice: "action said this")
+        banner.popoverClosed()
+        XCTAssertNil(banner.actionNotice)
+        XCTAssertEqual(banner.message, "CLI not found")
+    }
+}

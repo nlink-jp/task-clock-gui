@@ -26,9 +26,10 @@ last run's captured log.
   harmlessly), a per-task on/off switch (pause/resume,
   persisted by the daemon so it survives restarts), reload of the task
   definitions, reveal the last run's log in Finder — failures are reported
-  in the same popover. Tasks with `enabled = false` in the config show no
-  switch: that layer belongs to tasks.d, and a control that does nothing
-  would lie
+  in the same popover and stay there until your next action or until the
+  popover closes (the background status poll never clears an action's
+  answer). Tasks with `enabled = false` in the config show no switch: that
+  layer belongs to tasks.d, and a control that does nothing would lie
 - **Resizable panel**: drag any edge or corner, OS-native; the size is
   remembered across launches
 - **Run history**: click a task row for its scheduled-vs-actual record —

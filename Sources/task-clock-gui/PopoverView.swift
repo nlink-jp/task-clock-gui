@@ -28,9 +28,9 @@ struct PopoverView: View {
             Divider()
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            if let error = model.lastError {
+            if let message = model.banner.message {
                 Divider()
-                Label(error, systemImage: Symbols.errorLabel)
+                Label(message, systemImage: Symbols.errorLabel)
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .lineLimit(3)

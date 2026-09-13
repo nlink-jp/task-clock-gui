@@ -29,6 +29,7 @@ CLI が無いと build-app は fail-closed（先に `cd ../task-clock && make bu
 Sources/TaskClockGUICore/    # 純関数層（テスト対象）
   Models.swift               #   CLI --json の decode（open-set・欠損許容）
   StateMapping.swift         #   表示状態写像・メニューバー集約・時間整形
+  BannerState.swift          #   バナーの二系統（poll の問題 / action の返事）
   PopoverLayout.swift        #   ポップオーバー高さ（floor/cap）
   SingleInstance.swift       #   単一インスタンス判定（status-lens から移植）
   BinaryResolution.swift     #   CLI バイナリ解決順（bundled が信頼アンカー）
@@ -124,4 +125,11 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
 - `history` の CLI フラグは位置引数の**前**（stdlib flag: `history -limit 5 <task>`）。
 - デーモン停止 (`CLIError.daemonDown`) はエラーバナーにしない — 独立した
   表示状態（menu bar `clock.badge.questionmark` + ポップオーバー案内文）。
+- **バナーは二系統（Core の `BannerState`）— poll がアクションの返事を消して
+  はならない**。アクションは完了直後に自分で再ポーリングするので、単一
+  フィールドだと成功ポーリングが約 100ms でメッセージを消し、拒否された
+  trigger（already_running 等）が完全に沈黙する（実地事故 2026-09-13）。
+  poll は `pollFinished` で自分の系統だけ、アクションは `actionFinished` で
+  自分の系統だけを書く。表示は action 優先、action 側は次のアクションか
+  パネルクローズまで残す。アクションの結果表示を増やすときも必ずこの型経由。
 - 詳細な罠一覧は CLAUDE.md の invariants を参照。

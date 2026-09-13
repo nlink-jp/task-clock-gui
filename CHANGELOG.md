@@ -3,6 +3,22 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A failed action now actually says so. Every action (run now, pause,
+  resume, reload, the daemon switches, launch at login) re-polls the
+  daemon when it finishes, and the poll's success handler cleared the
+  same message field the action had just written — about 100 ms later.
+  A `trigger` the daemon refused (already running, unknown task, a CLI
+  that could not start) was therefore completely silent, which looks
+  exactly like never having clicked. The poll's problem and the action's
+  word are now separate channels (`BannerState` in the Core): a poll can
+  only clear its own, the action's word stands until the next action or
+  until the popover closes, and the action's word is what the banner
+  shows while both hold something
+
 ## [0.5.0] - 2026-09-02
 
 ### Changed (bundled CLI)
