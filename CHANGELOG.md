@@ -3,6 +3,20 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **`make verify-release` now checks the CLI bundled into the app.** It had no
+  check on it at all, so an app built with no CLI inside, a development build of
+  the CLI, or an older one would have been notarized and uploaded. The app's
+  behaviour is the bundled CLI's, and a release build resolves that copy first, so
+  this is the one thing that decides what the app does. The gate now requires the
+  CLI to be present, `CLI_VERSION` to be a release tag, and the bundled binary to
+  report exactly that tag. `CLI_BIN` also finds the CLI's release binary
+  (`dist/<cli>-darwin-arm64`, which is what its `make package` leaves) before the
+  development one, so building right after a CLI release no longer comes up empty.
+
 ## [0.5.1] - 2026-09-13
 
 ### Fixed
