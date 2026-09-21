@@ -72,6 +72,15 @@ Tests/TaskClockGUICoreTests/ # decode fixture / 状態写像 / レイアウト /
   applicationDidResignActive で明示 orderOut + 表示直後 0.5s の grace、
   setFrameAutosaveName + 表示時に visibleFrame へクランプ。移植元は
   instant-translate の AppController。
+- **パネルを開いている間、メニューバー項目は押された見た目にならない（既知の制限・
+  サイズ変更と引き換えに受け入れた）。** macOS 27.0 で実測（2026-09-21、項目の矩形を
+  60 fps で撮影）: 押している間だけ点き、離した瞬間に消えて、開いている間ずっと消えたまま
+  （5/5）。表示中のハイライトは、NSPopover と MenuBarExtra の内部が AppKit の**非公開**の
+  仕組みで点けている。`button.highlight(true)` / `isHighlighted` は画面に出ない（呼ぶ
+  時機を 5 通り変えてすべて消灯）。非公開の呼び出しはパネルからでも効くが使わない
+  （動作保証を失う・利用者方針）。公開 API で点けるには MenuBarExtra か popover に
+  載せるしかなく、どちらもユーザーリサイズができない — 利用者判断でサイズ変更を残した。
+  詳細は knowledge の macos-gui「メニューバー項目の『開いている間のハイライト』は器が決める」。
 - **クローズ経路は hidePanel() 一本**: click-away・トグル・resign・Esc
   (StatusPanel.onCancel→cancelOperation) すべて経由。新しい閉じ方を足すときも
   必ずここを通す — 素通りするとモニタ解除と popoverClosed が飛ぶ (検証指摘 A2)。
