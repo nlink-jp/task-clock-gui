@@ -7,6 +7,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) +
 
 ### Fixed
 
+- The release zip no longer carries AppleDouble (`._*`) entries: the app is
+  zipped with `ditto --norsrc --noextattr`, so its signature survives unpacking
+  with `unzip`. `make verify-release` refuses a zip that carries them.
 - **`make verify-release` now checks the CLI bundled into the app.** It had no
   check on it at all, so an app built with no CLI inside, a development build of
   the CLI, or an older one would have been notarized and uploaded. The app's
